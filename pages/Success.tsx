@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { useLocation, Link, useNavigate } from 'react-router-dom';
 import { Order, OrderItem } from '../types';
 import { ApiService } from '../services/api';
-import { CheckCircle, ArrowLeft, Calendar, Sprout, PlusCircle } from 'lucide-react';
+import { CheckCircle, ArrowLeft, Calendar, Sprout, PlusCircle, UserCheck } from 'lucide-react';
 
 const Success: React.FC = () => {
   const location = useLocation();
@@ -12,6 +12,16 @@ const Success: React.FC = () => {
   const newItemsFromState = location.state?.newItems as OrderItem[] | undefined;
   
   const [pickupInfo, setPickupInfo] = useState<{dateStr: string, time: string, day: string} | null>(null);
+
+  // Witzige Sprüche für die Bestätigung
+  const funQuotes = [
+    "Das Gemüse freut sich schon riesig auf dein Zuhause!",
+    "Jerome hat die Karotten gerade nochmal extra gestreichelt.",
+    "Die Würmer im Acker weinen, weil du so viel tolles Zeug mitnimmst.",
+    "Jerome schärft schon mal die Harke für deine nächste Ladung.",
+    "Deine Kiste ist so schwer, Jerome macht dafür extra Liegestütze."
+  ];
+  const [quote] = useState(() => funQuotes[Math.floor(Math.random() * funQuotes.length)]);
 
   useEffect(() => {
     if (!order) { navigate('/'); return; }
@@ -56,20 +66,33 @@ const Success: React.FC = () => {
             <CheckCircle className="w-12 h-12 text-white" />
           </div>
           <h2 className="text-3xl font-black uppercase tracking-tighter leading-none mb-4">Acker-Mission:<br/>Erfolgreich!</h2>
-          <p className="opacity-95 font-black text-[10px] uppercase tracking-[0.2em] leading-relaxed">
-            Deine Reservierung wurde notiert!
+          <p className="opacity-95 font-black text-[10px] uppercase tracking-[0.2em] leading-relaxed italic">
+            "{quote}"
           </p>
         </div>
 
         <div className="p-6 sm:p-12">
           {pickupInfo && (
-            <div className="bg-[#fdfaf3] border border-[#f5f2e8] rounded-[2rem] p-6 mb-10 text-center">
+            <div className="bg-[#fdfaf3] border border-[#f5f2e8] rounded-[2rem] p-6 mb-10 text-center relative group">
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-white px-4 py-1 rounded-full border border-[#f5f2e8] text-[8px] font-black uppercase tracking-widest text-gray-400">
+                  Wichtig
+                </div>
                 <Calendar className="w-8 h-8 text-[#1a4d2e] mx-auto mb-4" />
                 <p className="text-gray-400 text-[9px] uppercase font-black tracking-widest mb-2">Deine Abholung</p>
                 <p className="text-2xl font-black text-[#1a4d2e] tracking-tight leading-tight">{pickupInfo.day}<br className="sm:hidden" /> {pickupInfo.dateStr}</p>
                 <p className="text-gray-900 font-bold mt-2 text-sm sm:text-xl">ab {pickupInfo.time} Uhr am Hof</p>
             </div>
           )}
+
+          <div className="mb-10 p-6 bg-[#1a4d2e]/5 rounded-3xl border border-[#1a4d2e]/10 flex items-center gap-4">
+            <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-sm text-[#1a4d2e]">
+              <UserCheck className="w-6 h-6" />
+            </div>
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-widest text-[#1a4d2e]">Vor Ort</p>
+              <p className="text-xs font-bold text-gray-600">Jerome packt dir alles zusammen. <br/>Zahlung ganz entspannt in Bar.</p>
+            </div>
+          </div>
 
           <div className="mb-10 space-y-8">
             <div className="flex flex-col items-center pb-4 border-b border-gray-100">
