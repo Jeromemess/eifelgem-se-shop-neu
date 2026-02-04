@@ -13,17 +13,19 @@ const Success: React.FC = () => {
   
   const [pickupInfo, setPickupInfo] = useState<{dateStr: string, time: string, day: string} | null>(null);
 
-  // Die gewünschten Sprüche mit Jérôme
+  // Witzige Sprüche für die Bestätigung
   const funQuotes = [
     "Jérôme hat die Gummistiefel schon an und flitzt im Tiefflug zum Acker!",
     "Deine Wünsche sind tief im Boden versenkt!",
     "Das Gemüse freut sich schon riesig auf dein Zuhause!",
-    "Jérôme hat die Karotten gerade nochmal extra gestreichelt.",
+    "Die Karotten wurden gerade nochmal extra gestreichelt.",
     "Die Würmer im Acker weinen, weil du so viel tolles Zeug mitnimmst.",
-    "Jérôme schärft schon mal die Harke für deine nächste Ladung.",
-    "Deine Kiste ist so schwer, Jérôme macht dafür extra Liegestütze."
+    "Wir schärfen schon mal die Harke für deine nächste Ladung.",
+    "Deine Kiste ist so schwer, wir machen dafür extra Liegestütze."
   ];
-  const [quote] = useState(() => funQuotes[0]); // Gummistiefel-Spruch als Standard
+  
+  // Der Gummistiefel-Spruch bleibt wie gewünscht als Primär-Slogan
+  const [quote] = useState(() => funQuotes[0]);
 
   useEffect(() => {
     if (!order) { navigate('/'); return; }
@@ -92,7 +94,7 @@ const Success: React.FC = () => {
             </div>
             <div>
               <p className="text-[10px] font-black uppercase tracking-widest text-[#1a4d2e]">Vor Ort</p>
-              <p className="text-xs font-bold text-gray-600">Jérôme packt dir alles zusammen. <br/>Zahlung ganz entspannt in Bar.</p>
+              <p className="text-xs font-bold text-gray-600">Wir packen dir alles zusammen. <br/>Zahlung ganz entspannt in Bar.</p>
             </div>
           </div>
 
