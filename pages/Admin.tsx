@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { ApiService, getWeekLabel } from '../services/api';
 import { Product, Order, TabView, StoreSettings } from '../types';
 import { 
-  Lock, Trash2, Edit2, Plus, LogOut, Loader2, UserCircle, CheckSquare, Square, Camera, Save, ChevronDown, ChevronUp, ClipboardList, ShoppingBasket, Calendar, CheckCircle2, Minus, Tag, Zap, Eye, EyeOff
+  Lock, Trash2, Edit2, Plus, LogOut, Loader2, UserCircle, CheckSquare, Square, Camera, Save, ChevronDown, ChevronUp, ClipboardList, ShoppingBasket, Calendar, CheckCircle2, Minus, Tag, Zap, Eye, EyeOff, AlertTriangle
 } from 'lucide-react';
 
 const ADMIN_PIN = '5719';
@@ -21,6 +21,7 @@ const Admin: React.FC = () => {
   const [currentProduct, setCurrentProduct] = useState<Partial<Product>>({});
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -43,6 +44,8 @@ const Admin: React.FC = () => {
       setOrders(o); 
       setSettings(s);
       setHarvestedItems(h);
+    } catch (err) {
+      console.error("Ladefehler:", err);
     } finally { setIsLoading(false); }
   };
 
@@ -56,34 +59,64 @@ const Admin: React.FC = () => {
   const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    const productToSave: Product = {
-      id: currentProduct.id || Math.random().toString(36).substr(2, 9),
-      name: currentProduct.name || 'Unbekannt',
-      pricePerUnit: Number(currentProduct.pricePerUnit) || 0,
-      unit: currentProduct.unit || 'Stück',
-      imageUrl: currentProduct.imageUrl || 'https://picsum.photos/400/300',
-      stockQuantity: Number(currentProduct.stockQuantity) || 0,
-      isActive: currentProduct.isActive ?? true,
-      description: currentProduct.description || '',
-      discount: Number(currentProduct.discount) || 0,
-      isBogo: !!currentProduct.isBogo
-    };
-    await ApiService.saveProduct(productToSave);
-    setIsEditing(false);
-    loadData();
+    try {
+      const productToSave: Product = {
+        id: currentProduct.id || Math.random().toString(36).substr(2, 9),
+        name: currentProduct.name || 'Unbekannt',
+        pricePerUnit: Number(currentProduct.pricePerUnit) || 0,
+        unit: currentProduct.unit || 'Stück',
+        imageUrl: currentProduct.imageUrl || 'https://images.unsplash.com/photo-1566385908041-9c9ca335606d?w=400',
+        stockQuantity: Number(currentProduct.stockQuantity) || 0,
+        isActive: currentProduct.isActive ?? true,
+        description: currentProduct.description || '',
+        discount: Number(currentProduct.discount) || 0,
+        isBogo: !!currentProduct.isBogo
+      };
+      
+      await ApiService.saveProduct(productToSave);
+      setIsEditing(false);
+      await loadData();
+    } catch (err: any) {
+      console.error("Fehler beim Speichern:", err);
+      alert(`Fehler beim Speichern: ${err.message}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleResetOrders = async () => {
+    setIsLoading(true);
+    try {
+      await ApiService.clearAllOrders();
+      await loadData();
+      setShowResetConfirm(false);
+      alert("Alle Bestellungen wurden gelöscht. Startklar für die neue Woche!");
+    } catch (err) {
+      alert("Fehler beim Löschen der Bestellungen.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleToggleVisibility = async (product: Product) => {
-    await ApiService.saveProduct({ ...product, isActive: !product.isActive });
-    loadData();
+    try {
+      await ApiService.saveProduct({ ...product, isActive: !product.isActive });
+      loadData();
+    } catch (err: any) {
+      alert("Fehler beim Ändern der Sichtbarkeit: " + err.message);
+    }
   };
 
   const handleUpdateStock = async (productId: string, delta: number) => {
     const p = products.find(prod => prod.id === productId);
     if (!p) return;
-    const newStock = Math.max(0, p.stockQuantity + delta);
-    await ApiService.saveProduct({ ...p, stockQuantity: newStock });
-    loadData();
+    try {
+      const newStock = Math.max(0, p.stockQuantity + delta);
+      await ApiService.saveProduct({ ...p, stockQuantity: newStock });
+      loadData();
+    } catch (err: any) {
+      alert("Fehler beim Bestands-Update: " + err.message);
+    }
   };
 
   const togglePacked = async (orderId: string, itemIdx: number) => {
@@ -231,32 +264,60 @@ const Admin: React.FC = () => {
                 </div>
                 <div className="space-y-4">
                     <input type="text" value={currentProduct.name || ''} onChange={e => setCurrentProduct({...currentProduct, name: e.target.value})} placeholder="NAME DER SORTE" className="w-full p-4 bg-[#fdfaf3] rounded-2xl font-black uppercase text-black border-2 border-transparent focus:border-[#1a4d2e] outline-none" required />
+                    
                     <div className="p-4 bg-[#fdfaf3] rounded-2xl border-2 border-[#f5f2e8]">
                       <label className="text-[8px] font-black uppercase tracking-widest text-[#1a4d2e] mb-2 block">Verfügbarkeit & Info</label>
-                      <textarea value={currentProduct.description || ''} onChange={e => setCurrentProduct({...currentProduct, description: e.target.value})} placeholder="Beschreibe kurz diese Sorte (z.B. Süß und knackig...)" className="w-full bg-transparent font-medium text-black outline-none min-h-[80px] text-sm resize-none" />
+                      <textarea value={currentProduct.description || ''} onChange={e => setCurrentProduct({...currentProduct, description: e.target.value})} placeholder="Beschreibe kurz diese Sorte..." className="w-full bg-transparent font-medium text-black outline-none min-h-[80px] text-sm resize-none" />
                     </div>
+
                     <div className="grid grid-cols-2 gap-3">
-                      <input type="number" step="0.01" value={currentProduct.pricePerUnit || ''} onChange={e => setCurrentProduct({...currentProduct, pricePerUnit: Number(e.target.value)})} placeholder="PREIS" className="p-4 bg-[#fdfaf3] rounded-2xl font-black outline-none" required />
-                      <input type="text" value={currentProduct.unit || ''} onChange={e => setCurrentProduct({...currentProduct, unit: e.target.value})} placeholder="EINHEIT (Bund...)" className="p-4 bg-[#fdfaf3] rounded-2xl font-black uppercase outline-none" required />
+                      <div className="p-4 bg-[#fdfaf3] rounded-2xl border-2 border-[#f5f2e8]">
+                        <label className="text-[8px] font-black uppercase tracking-widest text-gray-400 mb-1 block">Grundpreis</label>
+                        <input type="number" step="0.01" value={currentProduct.pricePerUnit || ''} onChange={e => setCurrentProduct({...currentProduct, pricePerUnit: Number(e.target.value)})} placeholder="PREIS" className="w-full bg-transparent font-black outline-none" required />
+                      </div>
+                      <div className="p-4 bg-[#fdfaf3] rounded-2xl border-2 border-[#f5f2e8]">
+                        <label className="text-[8px] font-black uppercase tracking-widest text-gray-400 mb-1 block">Einheit</label>
+                        <input type="text" value={currentProduct.unit || ''} onChange={e => setCurrentProduct({...currentProduct, unit: e.target.value})} placeholder="EINHEIT" className="w-full bg-transparent font-black uppercase outline-none" required />
+                      </div>
                     </div>
-                    <div className="p-4 bg-[#1a4d2e]/5 rounded-2xl border border-[#1a4d2e]/10">
-                        <label className="text-[8px] font-black uppercase tracking-widest text-[#1a4d2e] mb-1 block">Bestand am Hof</label>
+
+                    {/* AKTIONEN BEREICH */}
+                    <div className="p-6 bg-[#1a4d2e]/5 rounded-3xl border border-[#1a4d2e]/10 space-y-4">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-[#1a4d2e] block">Aktionen & Rabatte</label>
+                      
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="flex-1">
+                          <label className="text-[8px] font-black uppercase text-gray-400 mb-1 block">Rabatt (%)</label>
+                          <input 
+                            type="number" 
+                            min="0" 
+                            max="100" 
+                            value={currentProduct.discount || 0} 
+                            onChange={e => setCurrentProduct({...currentProduct, discount: Number(e.target.value)})} 
+                            className="w-full p-3 bg-white rounded-xl font-black outline-none border border-gray-100" 
+                          />
+                        </div>
+                        <button 
+                          type="button"
+                          onClick={() => setCurrentProduct({...currentProduct, isBogo: !currentProduct.isBogo})}
+                          className={`flex-1 p-3 rounded-xl border-2 font-black text-[9px] uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${currentProduct.isBogo ? 'bg-[#1a4d2e] text-white border-transparent' : 'bg-white text-gray-400 border-gray-100'}`}
+                        >
+                          <Zap className={`w-3 h-3 ${currentProduct.isBogo ? 'fill-current' : ''}`} />
+                          1+1 GRATIS
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="p-4 bg-[#fdfaf3] rounded-2xl border-2 border-[#f5f2e8]">
+                        <label className="text-[8px] font-black uppercase tracking-widest text-[#1a4d2e] mb-1 block">Aktueller Bestand am Hof</label>
                         <input type="number" value={currentProduct.stockQuantity || 0} onChange={e => setCurrentProduct({...currentProduct, stockQuantity: Number(e.target.value)})} className="w-full bg-transparent text-2xl font-black outline-none" />
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="p-4 bg-orange-50 rounded-2xl border border-orange-100">
-                        <label className="text-[8px] font-black uppercase tracking-widest text-orange-600 mb-2 block flex items-center gap-1"><Tag className="w-2 h-2" /> Rabatt %</label>
-                        <input type="number" value={currentProduct.discount || 0} onChange={e => setCurrentProduct({...currentProduct, discount: Number(e.target.value)})} className="w-full bg-transparent text-xl font-black outline-none text-orange-700" placeholder="0" />
-                      </div>
-                      <div className={`p-4 rounded-2xl border transition-colors flex flex-col justify-center cursor-pointer ${currentProduct.isBogo ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`} onClick={() => setCurrentProduct({...currentProduct, isBogo: !currentProduct.isBogo})}>
-                        <label className={`text-[8px] font-black uppercase tracking-widest mb-1 flex items-center gap-1 ${currentProduct.isBogo ? 'text-green-600' : 'text-gray-400'}`}><Zap className="w-2 h-2" /> 1+1 Gratis</label>
-                        <span className={`text-sm font-black uppercase ${currentProduct.isBogo ? 'text-green-700' : 'text-gray-400'}`}>{currentProduct.isBogo ? 'AKTIVIERT' : 'DEAKTIVIERT'}</span>
-                      </div>
                     </div>
                 </div>
                 <div className="flex gap-3">
                   <button type="button" onClick={() => setIsEditing(false)} className="flex-1 py-4 bg-gray-100 rounded-2xl font-black uppercase text-[10px]">Abbruch</button>
-                  <button type="submit" className="flex-1 py-4 bg-[#1a4d2e] text-white rounded-2xl font-black uppercase text-[10px]"><Save className="w-4 h-4 inline mr-2" /> Speichern</button>
+                  <button type="submit" disabled={isLoading} className="flex-1 py-4 bg-[#1a4d2e] text-white rounded-2xl font-black uppercase text-[10px] flex items-center justify-center gap-2">
+                    {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Save className="w-4 h-4" /> Speichern</>}
+                  </button>
                 </div>
               </form>
             ) : (
@@ -268,33 +329,25 @@ const Admin: React.FC = () => {
                 <div className="grid grid-cols-1 gap-4">
                   {products.map(p => (
                     <div key={p.id} className={`border-2 rounded-[1.5rem] overflow-hidden bg-[#fdfbf7] border-[#f5f2e8] p-4 flex gap-4 items-center transition-opacity ${p.isActive ? 'opacity-100' : 'opacity-40'}`}>
-                      <div className="relative w-20 h-20 shrink-0">
-                         <img src={p.imageUrl} className="w-full h-full rounded-xl object-cover" />
-                         {(p.discount || 0) > 0 && <div className="absolute -top-1 -left-1 bg-orange-500 text-white text-[7px] font-black px-1.5 py-0.5 rounded-full">-{p.discount}%</div>}
-                         {p.isBogo && <div className="absolute -bottom-1 -right-1 bg-green-500 text-white text-[7px] font-black px-1.5 py-0.5 rounded-full">1+1</div>}
-                      </div>
+                      <img src={p.imageUrl} className="w-20 h-20 rounded-xl object-cover" />
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                           <h4 className="font-black text-sm uppercase truncate text-black">{p.name}</h4>
-                           {!p.isActive && <span className="text-[7px] font-black uppercase bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded">Inaktiv</span>}
-                        </div>
-                        <div className="flex items-baseline gap-2">
-                           <p className="text-[9px] font-black text-[#1a4d2e] uppercase">{p.pricePerUnit.toFixed(2)}€</p>
-                           <span className="text-[7px] text-gray-400 font-bold">/ {p.unit}</span>
-                        </div>
-                        <div className="flex items-center gap-3 mt-2">
-                          <button onClick={() => handleUpdateStock(p.id, -1)} className="w-8 h-8 bg-white border border-gray-100 rounded-lg flex items-center justify-center active:scale-90"><Minus className="w-3 h-3 text-red-500" /></button>
-                          <div className="text-center min-w-[30px]">
-                            <p className="text-lg font-black leading-none">{p.stockQuantity}</p>
-                          </div>
-                          <button onClick={() => handleUpdateStock(p.id, 1)} className="w-8 h-8 bg-white border border-gray-100 rounded-lg flex items-center justify-center active:scale-90"><Plus className="w-3 h-3 text-green-500" /></button>
+                         <h4 className="font-black text-sm uppercase truncate text-black">{p.name}</h4>
+                         <div className="flex items-center gap-2">
+                            <p className="text-[9px] font-black text-[#1a4d2e] uppercase">{p.pricePerUnit.toFixed(2)}€ / {p.unit}</p>
+                            {(p.discount || 0) > 0 && <span className="bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded-md text-[7px] font-black">-{p.discount}%</span>}
+                            {p.isBogo && <span className="bg-green-100 text-green-600 px-1.5 py-0.5 rounded-md text-[7px] font-black">1+1</span>}
+                         </div>
+                         <div className="flex items-center gap-3 mt-2">
+                          <button onClick={() => handleUpdateStock(p.id, -1)} className="w-8 h-8 bg-white border border-gray-100 rounded-lg flex items-center justify-center"><Minus className="w-3 h-3 text-red-500" /></button>
+                          <p className="text-lg font-black leading-none min-w-[30px] text-center">{p.stockQuantity}</p>
+                          <button onClick={() => handleUpdateStock(p.id, 1)} className="w-8 h-8 bg-white border border-gray-100 rounded-lg flex items-center justify-center"><Plus className="w-3 h-3 text-green-500" /></button>
                         </div>
                       </div>
                       <div className="flex flex-col gap-2">
-                        <button onClick={() => handleToggleVisibility(p)} className={`p-3 bg-white border rounded-xl transition-colors ${p.isActive ? 'text-[#1a4d2e] border-[#1a4d2e]/20' : 'text-gray-300 border-gray-100'}`}>
+                        <button onClick={() => handleToggleVisibility(p)} className={`p-3 bg-white border rounded-xl ${p.isActive ? 'text-[#1a4d2e]' : 'text-gray-300'}`}>
                           {p.isActive ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
                         </button>
-                        <button onClick={() => { setCurrentProduct(p); setIsEditing(true); }} className="p-3 bg-white border border-gray-100 rounded-xl"><Edit2 className="w-4 h-4 text-black" /></button>
+                        <button onClick={() => { setCurrentProduct(p); setIsEditing(true); }} className="p-3 bg-white border border-gray-100 rounded-xl"><Edit2 className="w-4 h-4" /></button>
                       </div>
                     </div>
                   ))}
@@ -309,34 +362,40 @@ const Admin: React.FC = () => {
             <h4 className="font-black text-xl uppercase tracking-tighter text-black text-center">Shop-Setup</h4>
             <div className="space-y-6">
                 <div className="p-6 bg-[#fdfaf3] rounded-3xl border border-[#f5f2e8]">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-4 block">Kalender-Steuerung</label>
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <p className="text-[8px] font-black uppercase text-[#1a4d2e]">Nächstes Abholdatum</p>
-                      <input type="date" value={settings.currentPickupDate} onChange={e => setSettings({...settings, currentPickupDate: e.target.value})} className="w-full p-4 bg-white rounded-2xl font-black text-black outline-none border-2 border-transparent focus:border-[#1a4d2e] shadow-sm" />
-                    </div>
-                  </div>
+                  <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-4 block">Abholung am Datum</label>
+                  <input type="date" value={settings.currentPickupDate} onChange={e => setSettings({...settings, currentPickupDate: e.target.value})} className="w-full p-4 rounded-2xl font-black text-black outline-none border-2 border-transparent focus:border-[#1a4d2e]" />
                 </div>
-
                 <div className="p-6 bg-[#fdfaf3] rounded-3xl border border-[#f5f2e8]">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-4 block">Shop & Logistik</label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <p className="text-[8px] font-black uppercase text-[#1a4d2e]">Öffnungstag</p>
-                      <select value={settings.openDay} onChange={e => setSettings({...settings, openDay: e.target.value})} className="w-full p-4 bg-white rounded-2xl font-black uppercase text-black outline-none border-2 border-transparent focus:border-[#1a4d2e] shadow-sm">
-                        {['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'].map(d => <option key={d} value={d}>{d}</option>)}
-                      </select>
-                    </div>
-                    <div className="space-y-2">
-                      <p className="text-[8px] font-black uppercase text-[#1a4d2e]">Abhol-Uhrzeit</p>
-                      <input type="time" value={settings.pickupTime} onChange={e => setSettings({...settings, pickupTime: e.target.value})} className="w-full p-4 bg-white rounded-2xl font-black text-black outline-none border-2 border-transparent focus:border-[#1a4d2e] shadow-sm" />
-                    </div>
-                  </div>
+                   <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-4 block">Wochentag der Shop-Öffnung</label>
+                   <select value={settings.openDay} onChange={e => setSettings({...settings, openDay: e.target.value})} className="w-full p-4 rounded-2xl font-black uppercase outline-none">
+                     {['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'].map(d => <option key={d} value={d}>{d}</option>)}
+                   </select>
                 </div>
             </div>
-            <button onClick={async () => { await ApiService.saveSettings(settings); setSaveSuccess(true); setTimeout(() => setSaveSuccess(false), 2000); }} className="w-full bg-[#1a4d2e] text-white py-6 rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl active:scale-95 transition-all">
-              {saveSuccess ? 'Konfiguration gesichert!' : 'Setup speichern'}
-            </button>
+            
+            <div className="flex flex-col gap-3">
+              <button onClick={async () => { try { await ApiService.saveSettings(settings); setSaveSuccess(true); setTimeout(() => setSaveSuccess(false), 2000); } catch(e) { alert("Fehler beim Speichern der Settings"); } }} className="w-full bg-[#1a4d2e] text-white py-6 rounded-2xl font-black uppercase tracking-widest text-xs shadow-lg">
+                {saveSuccess ? 'Konfiguration gesichert!' : 'Setup speichern'}
+              </button>
+
+              <div className="pt-10 border-t border-gray-100 mt-6">
+                <p className="text-[10px] font-black uppercase tracking-widest text-red-500 mb-4 text-center">Gefahrenbereich (Neue Woche)</p>
+                {showResetConfirm ? (
+                  <div className="bg-red-50 p-6 rounded-3xl border-2 border-red-200 text-center animate-in zoom-in-95">
+                    <AlertTriangle className="w-8 h-8 text-red-600 mx-auto mb-3" />
+                    <p className="text-xs font-bold text-red-800 mb-4">Willst du wirklich ALLE Bestellungen löschen? Das kann nicht rückgängig gemacht werden.</p>
+                    <div className="flex gap-2">
+                      <button onClick={() => setShowResetConfirm(false)} className="flex-1 py-3 bg-white border border-red-200 rounded-xl font-black text-[9px] uppercase">Abbruch</button>
+                      <button onClick={handleResetOrders} className="flex-1 py-3 bg-red-600 text-white rounded-xl font-black text-[9px] uppercase">Ja, alles löschen</button>
+                    </div>
+                  </div>
+                ) : (
+                  <button onClick={() => setShowResetConfirm(true)} className="w-full bg-white border-2 border-red-100 text-red-500 hover:bg-red-50 py-4 rounded-2xl font-black uppercase tracking-widest text-[9px] flex items-center justify-center gap-2 transition-colors">
+                    <Trash2 className="w-4 h-4" /> Bestellungen für neue Woche zurücksetzen
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
         )}
       </div>
