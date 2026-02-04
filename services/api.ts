@@ -75,9 +75,7 @@ export const ApiService = {
 
   async login(firstName: string, lastName: string) {
     if (!supabase) throw new Error("Supabase nicht konfiguriert!");
-    
     const { data: existing } = await supabase.from('customers').select('*').ilike('first_name', firstName).ilike('last_name', lastName);
-    
     let customer: Customer;
     if (existing && existing.length > 0) {
       customer = {
@@ -111,7 +109,6 @@ export const ApiService = {
 
   async saveProduct(p: Product) {
     if (!supabase) throw new Error("Keine DB-Verbindung");
-    
     const dbProduct: any = {
       name: p.name,
       price_per_unit: Number(p.pricePerUnit),
@@ -123,11 +120,7 @@ export const ApiService = {
       discount: Number(p.discount || 0),
       is_bogo: !!p.isBogo
     };
-    
-    if (p.id && p.id.length > 10) { 
-      dbProduct.id = p.id;
-    }
-
+    if (p.id && p.id.length > 10) { dbProduct.id = p.id; }
     const { error } = await supabase.from('products').upsert(dbProduct);
     if (error) throw error;
   },
@@ -139,9 +132,19 @@ export const ApiService = {
     return (data || []).map(mapOrder);
   },
 
+  async getOrdersForUser(customerName: string, weekLabel: string): Promise<Order | null> {
+    if (!supabase) return null;
+    const { data } = await supabase.from('orders')
+      .select('*')
+      .eq('customer_name', customerName)
+      .eq('week_label', weekLabel)
+      .maybeSingle();
+    return data ? mapOrder(data) : null;
+  },
+
   async clearAllOrders() {
     if (!supabase) return;
-    const { error } = await supabase.from('orders').delete().neq('id', '00000000-0000-0000-0000-000000000000'); // Löscht alles
+    const { error } = await supabase.from('orders').delete().neq('id', '00000000-0000-0000-0000-000000000000');
     if (error) throw error;
   },
 
@@ -149,16 +152,49 @@ export const ApiService = {
     if (!supabase) throw new Error("Keine Verbindung");
     const settings = await this.getSettings();
     const finalWeek = settings.currentPickupDate ? getWeekLabel(new Date(settings.currentPickupDate)) : week;
-    
-    const { data, error } = await supabase.from('orders').insert([{
-      customer_name: `${customer.firstName} ${customer.lastName}`,
-      week_label: finalWeek,
-      items: items,
-      total_amount: total
-    }]).select().single();
-    
-    if (error) throw error;
+    const customerFullName = `${customer.firstName} ${customer.lastName}`;
 
+    const existingOrder = await this.getOrdersForUser(customerFullName, finalWeek);
+
+    let resultOrder: Order;
+    if (existingOrder) {
+      // Zusammenführen der Items
+      const mergedItems = [...existingOrder.items];
+      items.forEach(newItem => {
+        const existingItem = mergedItems.find(mi => mi.productId === newItem.productId);
+        if (existingItem) {
+          existingItem.quantity += newItem.quantity;
+          // Preis anpassen falls sich was geändert hat (Gewichtung)
+          existingItem.priceAtOrder = newItem.priceAtOrder;
+        } else {
+          mergedItems.push(newItem);
+        }
+      });
+
+      const { data, error } = await supabase.from('orders')
+        .update({
+          items: mergedItems,
+          total_amount: existingOrder.totalAmount + total
+        })
+        .eq('id', existingOrder.id)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      resultOrder = mapOrder(data);
+    } else {
+      const { data, error } = await supabase.from('orders').insert([{
+        customer_name: customerFullName,
+        week_label: finalWeek,
+        items: items,
+        total_amount: total
+      }]).select().single();
+      
+      if (error) throw error;
+      resultOrder = mapOrder(data);
+    }
+
+    // Bestand abziehen
     for (const item of items) {
       const { data: prod } = await supabase.from('products').select('stock_quantity').eq('id', item.productId).single();
       if (prod) {
@@ -166,7 +202,7 @@ export const ApiService = {
         await supabase.from('products').update({ stock_quantity: newQty }).eq('id', item.productId);
       }
     }
-    return mapOrder(data);
+    return resultOrder;
   },
 
   async getSettings(): Promise<StoreSettings> {
