@@ -44,7 +44,6 @@ const Success: React.FC = () => {
   if (!order) return null;
 
   const newlyAdded = newItemsFromState || [];
-  // Wir filtern die Items, die NICHT in dieser Runde neu dazu kamen
   const previousItems = order.items.map(item => {
     const newly = newlyAdded.find(n => n.productId === item.productId);
     if (newly) {
@@ -101,7 +100,6 @@ const Success: React.FC = () => {
                 <span className="text-2xl font-black text-black uppercase tracking-tighter">{order.customerName}</span>
             </div>
 
-            {/* NEUE POSTEN */}
             <div className="space-y-4">
               <h4 className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-[#1a4d2e]">
                 <PlusCircle className="w-4 h-4" /> Gerade hinzugefügt
@@ -119,7 +117,6 @@ const Success: React.FC = () => {
               </ul>
             </div>
 
-            {/* ALTE POSTEN AUS DER WOCHE */}
             {isFollowUpOrder && (
               <div className="space-y-4 pt-4 border-t border-dashed border-gray-100 opacity-60">
                 <h4 className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-gray-400">
@@ -137,7 +134,7 @@ const Success: React.FC = () => {
             )}
 
             <div className="pt-8 flex flex-col items-center border-t border-[#f5f2e8] mt-8">
-              <span className="font-black text-gray-400 uppercase tracking-widest text-[9px] mb-2">Gesamtbetrag (Bar bei Abholung)</span>
+              <span className="font-black text-gray-400 uppercase tracking-widest text-[9px] mb-2">Gesamtbetrag am Hof</span>
               <span className="font-black text-5xl text-[#1a4d2e] tracking-tighter">{order.totalAmount.toFixed(2)} €</span>
             </div>
           </div>
