@@ -3,13 +3,14 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
 import { ApiService, getWeekLabel } from '../services/api';
-import { Product, Customer, OrderItem, Order } from '../types';
-import { Loader2, X, ArrowRight, Calendar, CheckSquare, UserPlus, ShoppingBag, AlertCircle, ShoppingCart, History } from 'lucide-react';
+import { Product, Customer, OrderItem, Order, StoreSettings } from '../types';
+import { Loader2, X, ArrowRight, Calendar, CheckSquare, UserPlus, ShoppingBag, AlertCircle, ShoppingCart, History, Info } from 'lucide-react';
 
 const Shop: React.FC = () => {
   const navigate = useNavigate();
   const [currentUser, setCurrentUser] = useState<Customer | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
+  const [settings, setSettings] = useState<StoreSettings | null>(null);
   const [cart, setCart] = useState<Record<string, number>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -28,7 +29,7 @@ const Shop: React.FC = () => {
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const [user, data, status, settings] = await Promise.all([
+      const [user, data, status, storeSettings] = await Promise.all([
         ApiService.getCurrentUser(),
         ApiService.getProducts(),
         ApiService.isShopOpen(),
@@ -37,9 +38,10 @@ const Shop: React.FC = () => {
       setCurrentUser(user);
       setProducts(data.filter(p => p.isActive));
       setShopStatus(status);
+      setSettings(storeSettings);
 
       if (user) {
-        const week = settings.currentPickupDate ? getWeekLabel(new Date(settings.currentPickupDate)) : getWeekLabel(new Date());
+        const week = storeSettings.currentPickupDate ? getWeekLabel(new Date(storeSettings.currentPickupDate)) : getWeekLabel(new Date());
         const prev = await ApiService.getOrdersForUser(`${user.firstName} ${user.lastName}`, week);
         setPreviousOrder(prev);
       }
@@ -49,6 +51,16 @@ const Shop: React.FC = () => {
       setIsLoading(false);
     }
   };
+
+  const formattedPickupDate = useMemo(() => {
+    if (!settings?.currentPickupDate) return null;
+    return new Date(settings.currentPickupDate).toLocaleDateString('de-DE', {
+      weekday: 'long',
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+  }, [settings]);
 
   const calculateTotalToPay = (product: Product, quantity: number) => {
     let price = product.pricePerUnit;
@@ -138,9 +150,17 @@ const Shop: React.FC = () => {
   return (
     <div className="pb-40 max-w-5xl mx-auto px-4 sm:px-6 py-12">
       <div className="text-center mb-16 sm:mb-24 mt-8">
-        <h2 className="text-4xl md:text-7xl font-[900] text-[#121a14] mb-6 tracking-tighter leading-[0.9]">
+        <h2 className="text-4xl md:text-7xl font-[900] text-[#121a14] mb-4 tracking-tighter leading-[0.9]">
           Frisches Gemüse.<br/><span className="text-[#1a4d2e]">Direkt vom Feld.</span>
         </h2>
+        
+        {formattedPickupDate && (
+          <div className="inline-flex items-center gap-2 bg-[#1a4d2e] text-white px-6 py-2 rounded-full font-black text-[10px] uppercase tracking-widest shadow-lg mb-8 animate-in fade-in slide-in-from-bottom-2">
+            <Calendar className="w-3 h-3" />
+            Nächster Verkauf: {formattedPickupDate}
+          </div>
+        )}
+
         <p className="text-gray-400 max-w-md mx-auto font-black text-[10px] uppercase tracking-[0.4em] leading-relaxed">
           Stöbere durch unsere Ernte und reserviere deine Auswahl
         </p>
@@ -182,17 +202,20 @@ const Shop: React.FC = () => {
               </div>
 
               <div className="space-y-6 mb-12">
-                {/* BEREITS GEKAUFT SECTION */}
+                {/* ÜBERSICHTLICHERE GRUPPIERUNG WIE GESTERN */}
                 {previousOrder && (
-                  <div className="bg-gray-50 border border-gray-100 rounded-[2.5rem] p-8 border-dashed">
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-6 flex items-center gap-2">
-                      <History className="w-4 h-4" /> Bereits in deiner Kiste:
-                    </p>
+                  <div className="bg-[#f5f5f5] rounded-[2.5rem] p-8 border border-gray-200 shadow-inner">
+                    <div className="flex items-center justify-between mb-6">
+                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                        <History className="w-4 h-4" /> Vorher gekauft (KW {previousOrder.weekLabel.split(' ')[1]}):
+                      </p>
+                      <span className="text-[9px] font-black bg-white px-2 py-1 rounded-md text-gray-400 border border-gray-100 shadow-sm">Bestehend</span>
+                    </div>
                     <div className="space-y-4">
                       {previousOrder.items.map((item, idx) => (
-                        <div key={idx} className="flex justify-between items-center text-sm font-bold text-gray-400">
-                          <span className="flex items-center gap-2">
-                             <div className="w-1.5 h-1.5 bg-gray-300 rounded-full"></div>
+                        <div key={idx} className="flex justify-between items-center text-sm font-bold text-gray-500">
+                          <span className="flex items-center gap-3">
+                             <div className="w-2 h-2 bg-[#1a4d2e]/20 rounded-full"></div>
                              {item.quantity}x {item.productName}
                           </span>
                           <span className="tabular-nums">{(item.priceAtOrder * item.quantity).toFixed(2)} €</span>
@@ -202,10 +225,12 @@ const Shop: React.FC = () => {
                   </div>
                 )}
 
-                {/* NEU HINZUGEFÜGT SECTION */}
-                <div className="bg-[#fdfaf3] rounded-[2.5rem] p-8 sm:p-10 border border-[#f5f2e8] shadow-sm">
+                <div className="bg-[#fdfaf3] rounded-[2.5rem] p-8 sm:p-10 border-2 border-[#1a4d2e]/10 shadow-sm relative">
+                  <div className="absolute -top-3 right-8 bg-[#1a4d2e] text-white px-4 py-1 rounded-full text-[8px] font-black uppercase tracking-widest">
+                    Neu Hinzugefügt
+                  </div>
                   <p className="text-[10px] font-black text-[#1a4d2e] uppercase tracking-widest mb-8 flex items-center gap-2">
-                    <ShoppingCart className="w-4 h-4" /> Gerade hinzugefügt:
+                    <ShoppingCart className="w-4 h-4" /> Deine aktuelle Auswahl:
                   </p>
                   <div className="space-y-8 mb-10">
                     {Object.entries(cart).map(([id, qty]) => {
@@ -226,18 +251,19 @@ const Shop: React.FC = () => {
                     })}
                   </div>
                   <div className="flex justify-between items-baseline pt-8 border-t border-[#f2ede1]">
-                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Zusätzlicher Betrag</span>
+                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Heute fällig</span>
                     <span className="text-5xl font-black text-[#121a14] tabular-nums tracking-tighter">{cartTotal.toFixed(2)}<span className="text-2xl ml-1 text-[#1a4d2e]">€</span></span>
                   </div>
-                  {previousOrder && (
-                    <div className="mt-6 pt-6 border-t border-dashed border-gray-200">
-                       <div className="flex justify-between items-center">
-                         <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Gesamtwert dieser Woche:</span>
-                         <span className="text-xl font-black text-black tabular-nums">{(previousOrder.totalAmount + cartTotal).toFixed(2)} €</span>
-                       </div>
-                    </div>
-                  )}
                 </div>
+                
+                {previousOrder && (
+                  <div className="flex items-center gap-3 p-4 bg-[#1a4d2e]/5 rounded-2xl border border-[#1a4d2e]/10">
+                    <Info className="w-4 h-4 text-[#1a4d2e] shrink-0" />
+                    <p className="text-[10px] font-bold text-[#1a4d2e] leading-tight">
+                      Deine neue Bestellung wird mit der bestehenden zusammengeführt. Gesamtwert am Hof: <span className="font-black">{(previousOrder.totalAmount + cartTotal).toFixed(2)} €</span>
+                    </p>
+                  </div>
+                )}
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-8">
