@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
 import { ApiService, getWeekLabel } from '../services/api';
 import { Product, Customer, OrderItem, Order, StoreSettings } from '../types';
-import { Loader2, X, ArrowRight, Calendar, CheckSquare, UserPlus, ShoppingBag, AlertCircle, ShoppingCart, History, Info } from 'lucide-react';
+import { Loader2, X, ArrowRight, Calendar, CheckSquare, UserPlus, ShoppingBag, AlertCircle, ShoppingCart, History, Info, Plus } from 'lucide-react';
 
 const Shop: React.FC = () => {
   const navigate = useNavigate();
@@ -155,9 +155,9 @@ const Shop: React.FC = () => {
         </h2>
         
         {formattedPickupDate && (
-          <div className="inline-flex items-center gap-2 bg-[#1a4d2e] text-white px-6 py-2 rounded-full font-black text-[10px] uppercase tracking-widest shadow-lg mb-8 animate-in fade-in slide-in-from-bottom-2">
-            <Calendar className="w-3 h-3" />
-            Nächster Verkauf: {formattedPickupDate}
+          <div className="inline-flex items-center gap-2 bg-[#1a4d2e] text-white px-6 py-3 rounded-full font-black text-[11px] uppercase tracking-widest shadow-xl mb-10 border-2 border-white/20">
+            <Calendar className="w-4 h-4" />
+            Nächste Ernte: {formattedPickupDate}
           </div>
         )}
 
@@ -195,42 +195,41 @@ const Shop: React.FC = () => {
             <div className="p-8 sm:p-14 max-h-[90vh] overflow-y-auto no-scrollbar">
               <div className="flex justify-between items-start mb-10">
                 <div>
-                  <h3 className="text-3xl font-black text-[#121a14] tracking-tighter uppercase leading-none">Alles bereit?</h3>
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-2">Frisch vom Feld direkt zu dir.</p>
+                  <h3 className="text-3xl font-black text-[#121a14] tracking-tighter uppercase leading-none">Reservierung</h3>
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-2">Prüfe deine Kiste vor dem Absenden.</p>
                 </div>
                 <button onClick={() => setIsCheckoutOpen(false)} className="p-2 hover:bg-gray-100 rounded-full"><X className="w-8 h-8 text-gray-400" /></button>
               </div>
 
-              <div className="space-y-6 mb-12">
-                {/* ÜBERSICHTLICHERE GRUPPIERUNG WIE GESTERN */}
+              <div className="space-y-6 mb-10">
+                {/* BEREITS BESTELLT - ÜBERSICHTLICH GESTERN STIL */}
                 {previousOrder && (
-                  <div className="bg-[#f5f5f5] rounded-[2.5rem] p-8 border border-gray-200 shadow-inner">
+                  <div className="bg-gray-50 border-2 border-dashed border-gray-200 rounded-[2.5rem] p-8">
                     <div className="flex items-center justify-between mb-6">
                       <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
-                        <History className="w-4 h-4" /> Vorher gekauft (KW {previousOrder.weekLabel.split(' ')[1]}):
+                        <History className="w-4 h-4" /> Bisher reserviert:
                       </p>
-                      <span className="text-[9px] font-black bg-white px-2 py-1 rounded-md text-gray-400 border border-gray-100 shadow-sm">Bestehend</span>
+                      <span className="text-[9px] font-black text-gray-400 bg-white px-2 py-1 rounded-md border border-gray-100">Bereits in der Kiste</span>
                     </div>
                     <div className="space-y-4">
                       {previousOrder.items.map((item, idx) => (
-                        <div key={idx} className="flex justify-between items-center text-sm font-bold text-gray-500">
-                          <span className="flex items-center gap-3">
-                             <div className="w-2 h-2 bg-[#1a4d2e]/20 rounded-full"></div>
-                             {item.quantity}x {item.productName}
-                          </span>
+                        <div key={idx} className="flex justify-between items-center text-sm font-bold text-gray-400">
+                          <span>{item.quantity}x {item.productName}</span>
                           <span className="tabular-nums">{(item.priceAtOrder * item.quantity).toFixed(2)} €</span>
                         </div>
                       ))}
                     </div>
+                    <div className="mt-6 pt-4 border-t border-gray-100 flex justify-between items-center">
+                       <span className="text-[9px] font-black text-gray-400 uppercase">Teilbetrag Alt</span>
+                       <span className="text-sm font-black text-gray-400">{previousOrder.totalAmount.toFixed(2)} €</span>
+                    </div>
                   </div>
                 )}
 
-                <div className="bg-[#fdfaf3] rounded-[2.5rem] p-8 sm:p-10 border-2 border-[#1a4d2e]/10 shadow-sm relative">
-                  <div className="absolute -top-3 right-8 bg-[#1a4d2e] text-white px-4 py-1 rounded-full text-[8px] font-black uppercase tracking-widest">
-                    Neu Hinzugefügt
-                  </div>
+                {/* NEU HINZUGEFÜGT */}
+                <div className="bg-[#fdfaf3] rounded-[2.5rem] p-8 sm:p-10 border-2 border-[#1a4d2e]/10 shadow-sm">
                   <p className="text-[10px] font-black text-[#1a4d2e] uppercase tracking-widest mb-8 flex items-center gap-2">
-                    <ShoppingCart className="w-4 h-4" /> Deine aktuelle Auswahl:
+                    <ShoppingCart className="w-4 h-4" /> Neu dazu:
                   </p>
                   <div className="space-y-8 mb-10">
                     {Object.entries(cart).map(([id, qty]) => {
@@ -250,20 +249,24 @@ const Shop: React.FC = () => {
                       );
                     })}
                   </div>
-                  <div className="flex justify-between items-baseline pt-8 border-t border-[#f2ede1]">
-                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Heute fällig</span>
-                    <span className="text-5xl font-black text-[#121a14] tabular-nums tracking-tighter">{cartTotal.toFixed(2)}<span className="text-2xl ml-1 text-[#1a4d2e]">€</span></span>
+                  
+                  <div className="pt-8 border-t-2 border-white/50 space-y-4">
+                     <div className="flex justify-between items-center text-gray-400 font-bold text-[11px] uppercase tracking-widest">
+                        <span>Neue Posten</span>
+                        <span className="tabular-nums">+{cartTotal.toFixed(2)} €</span>
+                     </div>
+                     
+                     <div className="flex justify-between items-end">
+                        <div>
+                           <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Gesamtbetrag am Hof</p>
+                           <p className="text-[9px] font-bold text-gray-400 italic">Bezahlung erfolgt bar bei Abholung</p>
+                        </div>
+                        <span className="text-5xl font-black text-[#1a4d2e] tabular-nums tracking-tighter">
+                          {( (previousOrder?.totalAmount || 0) + cartTotal).toFixed(2)}<span className="text-2xl ml-1">€</span>
+                        </span>
+                     </div>
                   </div>
                 </div>
-                
-                {previousOrder && (
-                  <div className="flex items-center gap-3 p-4 bg-[#1a4d2e]/5 rounded-2xl border border-[#1a4d2e]/10">
-                    <Info className="w-4 h-4 text-[#1a4d2e] shrink-0" />
-                    <p className="text-[10px] font-bold text-[#1a4d2e] leading-tight">
-                      Deine neue Bestellung wird mit der bestehenden zusammengeführt. Gesamtwert am Hof: <span className="font-black">{(previousOrder.totalAmount + cartTotal).toFixed(2)} €</span>
-                    </p>
-                  </div>
-                )}
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-8">
@@ -277,13 +280,13 @@ const Shop: React.FC = () => {
                     <button type="button" onClick={handleSwitchUser} className="absolute top-6 right-6 p-2 text-[#1a4d2e] hover:text-black transition-colors"><UserPlus className="w-6 h-6" /></button>
                     <p className="text-[10px] font-black text-[#1a4d2e] uppercase tracking-widest mb-1">Moin Moin,</p>
                     <p className="text-3xl font-black text-black uppercase tracking-tight mb-2">{currentUser.firstName} {currentUser.lastName}!</p>
-                    <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">Schön, dass du wieder da bist!</p>
+                    <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">Deine Bestellung wird an die bestehende angehängt.</p>
                   </div>
                 )}
                 <button type="submit" disabled={isSubmitting} className="w-full bg-[#1a4d2e] text-white py-10 rounded-[2.5rem] font-black text-base uppercase tracking-widest shadow-xl flex items-center justify-center gap-3 transition-all hover:bg-black active:scale-95">
                   {isSubmitting ? <Loader2 className="w-8 h-8 animate-spin" /> : (
                     <span className="flex items-center gap-2">
-                      <ShoppingBag className="w-5 h-5" /> 
+                      <Plus className="w-5 h-5" /> 
                       {previousOrder ? 'Zu meiner Ernte hinzufügen' : 'Bestellung abschicken!'}
                     </span>
                   )}
