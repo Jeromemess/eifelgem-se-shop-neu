@@ -232,21 +232,29 @@ const Admin: React.FC = () => {
                 <div className="space-y-4">
                     <input type="text" value={currentProduct.name || ''} onChange={e => setCurrentProduct({...currentProduct, name: e.target.value})} placeholder="NAME DER SORTE" className="w-full p-4 bg-[#fdfaf3] rounded-2xl font-black uppercase border-2 border-transparent focus:border-[#1a4d2e] outline-none" required />
                     <div className="grid grid-cols-2 gap-3">
-                      <input type="number" step="0.01" value={currentProduct.pricePerUnit || ''} onChange={e => setCurrentProduct({...currentProduct, pricePerUnit: Number(e.target.value)})} placeholder="PREIS" className="p-4 bg-[#fdfaf3] rounded-2xl font-black" required />
-                      <input type="text" value={currentProduct.unit || ''} onChange={e => setCurrentProduct({...currentProduct, unit: e.target.value})} placeholder="EINHEIT" className="p-4 bg-[#fdfaf3] rounded-2xl font-black uppercase" required />
+                      <div className="bg-[#fdfaf3] rounded-2xl p-4">
+                        <label className="text-[8px] font-black uppercase text-gray-400 mb-1 block">Preis pro Einheit</label>
+                        <input type="number" step="0.01" value={currentProduct.pricePerUnit || ''} onChange={e => setCurrentProduct({...currentProduct, pricePerUnit: Number(e.target.value)})} className="w-full bg-transparent font-black" required />
+                      </div>
+                      <div className="bg-[#fdfaf3] rounded-2xl p-4">
+                        <label className="text-[8px] font-black uppercase text-gray-400 mb-1 block">Einheit</label>
+                        <input type="text" value={currentProduct.unit || ''} onChange={e => setCurrentProduct({...currentProduct, unit: e.target.value})} className="w-full bg-transparent font-black uppercase" required />
+                      </div>
                     </div>
-                    {/* AKTIONEN */}
+                    
+                    {/* AKTIONEN BEREICH */}
                     <div className="p-4 bg-[#1a4d2e]/5 rounded-2xl border border-[#1a4d2e]/10 flex gap-4">
                       <div className="flex-1">
                         <label className="text-[8px] font-black uppercase tracking-widest text-[#1a4d2e] mb-1 block">Rabatt %</label>
                         <input type="number" value={currentProduct.discount || 0} onChange={e => setCurrentProduct({...currentProduct, discount: Number(e.target.value)})} className="w-full p-2 bg-white rounded-lg font-black" />
                       </div>
                       <div className="flex-1 flex items-end">
-                        <button type="button" onClick={() => setCurrentProduct({...currentProduct, isBogo: !currentProduct.isBogo})} className={`w-full py-3 rounded-lg font-black text-[9px] uppercase tracking-widest border-2 transition-all ${currentProduct.isBogo ? 'bg-[#1a4d2e] text-white border-transparent' : 'bg-white text-gray-400'}`}>1+1 Gratis</button>
+                        <button type="button" onClick={() => setCurrentProduct({...currentProduct, isBogo: !currentProduct.isBogo})} className={`w-full py-3 rounded-lg font-black text-[9px] uppercase tracking-widest border-2 transition-all ${currentProduct.isBogo ? 'bg-[#1a4d2e] text-white border-transparent shadow-md' : 'bg-white text-gray-400 border-gray-100'}`}>1+1 Gratis</button>
                       </div>
                     </div>
+
                     <div className="p-4 bg-[#fdfaf3] rounded-2xl border-2 border-[#f5f2e8]">
-                        <label className="text-[8px] font-black uppercase tracking-widest text-[#1a4d2e] mb-1 block">Bestand</label>
+                        <label className="text-[8px] font-black uppercase tracking-widest text-[#1a4d2e] mb-1 block">Lagerbestand am Hof</label>
                         <input type="number" value={currentProduct.stockQuantity || 0} onChange={e => setCurrentProduct({...currentProduct, stockQuantity: Number(e.target.value)})} className="w-full bg-transparent text-2xl font-black outline-none" />
                     </div>
                 </div>
@@ -257,13 +265,28 @@ const Admin: React.FC = () => {
               </form>
             ) : (
               <>
-                <div className="flex justify-between items-center"><h3 className="font-black text-xl uppercase tracking-tighter text-black">Sortiment</h3><button onClick={() => { setCurrentProduct({ isActive: true, unit: 'Stück', stockQuantity: 10 }); setIsEditing(true); }} className="bg-black text-white px-4 py-3 rounded-xl font-black text-[9px] uppercase flex items-center gap-2"><Plus className="w-3 h-3" /> Neu</button></div>
+                <div className="flex justify-between items-center"><h3 className="font-black text-xl uppercase tracking-tighter text-black">Sortiment</h3><button onClick={() => { setCurrentProduct({ isActive: true, unit: 'Stück', stockQuantity: 10, discount: 0, isBogo: false }); setIsEditing(true); }} className="bg-black text-white px-4 py-3 rounded-xl font-black text-[9px] uppercase flex items-center gap-2"><Plus className="w-3 h-3" /> Neu</button></div>
                 <div className="grid grid-cols-1 gap-4">
                   {products.map(p => (
                     <div key={p.id} className="border-2 rounded-[1.5rem] bg-[#fdfbf7] border-[#f5f2e8] p-4 flex gap-4 items-center">
                       <img src={p.imageUrl} className="w-20 h-20 rounded-xl object-cover" />
-                      <div className="flex-1 min-w-0"><h4 className="font-black text-sm uppercase truncate">{p.name}</h4><p className="text-[9px] font-black text-[#1a4d2e]">{p.pricePerUnit.toFixed(2)}€ / {p.unit}</p><div className="flex items-center gap-3 mt-2"><button onClick={() => handleUpdateStock(p.id, -1)} className="w-8 h-8 bg-white border rounded-lg flex items-center justify-center"><Minus className="w-3 h-3 text-red-500" /></button><p className="text-lg font-black min-w-[30px] text-center">{p.stockQuantity}</p><button onClick={() => handleUpdateStock(p.id, 1)} className="w-8 h-8 bg-white border rounded-lg flex items-center justify-center"><Plus className="w-3 h-3 text-green-500" /></button></div></div>
-                      <div className="flex flex-col gap-2"><button onClick={() => handleToggleVisibility(p)} className={`p-3 bg-white border rounded-xl ${p.isActive ? 'text-[#1a4d2e]' : 'text-gray-300'}`}>{p.isActive ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}</button><button onClick={() => { setCurrentProduct(p); setIsEditing(true); }} className="p-3 bg-white border rounded-xl"><Edit2 className="w-4 h-4" /></button></div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-black text-sm uppercase truncate">{p.name}</h4>
+                        <div className="flex items-center gap-2">
+                          <p className="text-[9px] font-black text-[#1a4d2e]">{p.pricePerUnit.toFixed(2)}€ / {p.unit}</p>
+                          {p.discount ? <span className="bg-orange-100 text-orange-600 px-1 py-0.5 rounded text-[7px] font-black">-{p.discount}%</span> : null}
+                          {p.isBogo ? <span className="bg-green-100 text-green-600 px-1 py-0.5 rounded text-[7px] font-black">1+1</span> : null}
+                        </div>
+                        <div className="flex items-center gap-3 mt-2">
+                          <button onClick={() => handleUpdateStock(p.id, -1)} className="w-8 h-8 bg-white border rounded-lg flex items-center justify-center"><Minus className="w-3 h-3 text-red-500" /></button>
+                          <p className="text-lg font-black min-w-[30px] text-center">{p.stockQuantity}</p>
+                          <button onClick={() => handleUpdateStock(p.id, 1)} className="w-8 h-8 bg-white border rounded-lg flex items-center justify-center"><Plus className="w-3 h-3 text-green-500" /></button>
+                        </div>
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        <button onClick={() => handleToggleVisibility(p)} className={`p-3 bg-white border rounded-xl ${p.isActive ? 'text-[#1a4d2e]' : 'text-gray-300'}`}>{p.isActive ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}</button>
+                        <button onClick={() => { setCurrentProduct(p); setIsEditing(true); }} className="p-3 bg-white border rounded-xl"><Edit2 className="w-4 h-4" /></button>
+                      </div>
                     </div>
                   ))}
                 </div>
