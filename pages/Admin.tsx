@@ -72,16 +72,12 @@ const Admin: React.FC = () => {
         discount: Number(currentProduct.discount) || 0,
         isBogo: !!currentProduct.isBogo
       };
-      
       await ApiService.saveProduct(productToSave);
       setIsEditing(false);
       await loadData();
     } catch (err: any) {
-      console.error("Fehler beim Speichern:", err);
       alert(`Fehler beim Speichern: ${err.message}`);
-    } finally {
-      setIsLoading(false);
-    }
+    } finally { setIsLoading(false); }
   };
 
   const handleResetOrders = async () => {
@@ -92,10 +88,8 @@ const Admin: React.FC = () => {
       setShowResetConfirm(false);
       alert("Alle Bestellungen wurden gelöscht. Startklar für die neue Woche!");
     } catch (err) {
-      alert("Fehler beim Löschen der Bestellungen.");
-    } finally {
-      setIsLoading(false);
-    }
+      alert("Fehler beim Löschen.");
+    } finally { setIsLoading(false); }
   };
 
   const handleToggleVisibility = async (product: Product) => {
@@ -103,7 +97,7 @@ const Admin: React.FC = () => {
       await ApiService.saveProduct({ ...product, isActive: !product.isActive });
       loadData();
     } catch (err: any) {
-      alert("Fehler beim Ändern der Sichtbarkeit: " + err.message);
+      alert("Fehler: " + err.message);
     }
   };
 
@@ -115,7 +109,7 @@ const Admin: React.FC = () => {
       await ApiService.saveProduct({ ...p, stockQuantity: newStock });
       loadData();
     } catch (err: any) {
-      alert("Fehler beim Bestands-Update: " + err.message);
+      alert("Fehler: " + err.message);
     }
   };
 
@@ -127,15 +121,6 @@ const Admin: React.FC = () => {
   const toggleHarvested = async (name: string) => {
     await ApiService.toggleHarvested(name);
     loadData();
-  };
-
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => setCurrentProduct({ ...currentProduct, imageUrl: reader.result as string });
-      reader.readAsDataURL(file);
-    }
   };
 
   const harvestSummary = useMemo(() => {
@@ -158,7 +143,7 @@ const Admin: React.FC = () => {
         <div className="w-16 h-16 bg-[#1a4d2e] text-white rounded-[1.2rem] flex items-center justify-center mx-auto mb-6 shadow-xl"><Lock className="w-8 h-8" /></div>
         <h2 className="text-2xl font-black mb-6 uppercase tracking-tighter text-black">Hof-Login</h2>
         <input type="password" value={pin} onChange={e => setPin(e.target.value)} className="w-full p-4 bg-[#fdfbf7] border-2 border-[#f5f2e8] rounded-2xl mb-6 text-center text-3xl outline-none font-black text-black" placeholder="PIN" />
-        <button className="w-full bg-black text-white py-4 rounded-2xl font-black uppercase tracking-widest text-sm transition-transform active:scale-95">Bestätigen</button>
+        <button className="w-full bg-black text-white py-4 rounded-2xl font-black uppercase tracking-widest text-sm active:scale-95">Login</button>
       </form>
     </div>
   );
@@ -186,39 +171,30 @@ const Admin: React.FC = () => {
         ))}
       </div>
 
-      <div className="bg-white rounded-[2rem] p-4 sm:p-10 relative border border-[#f5f2e8] shadow-sm min-h-[400px]">
+      <div className="bg-white rounded-[2rem] p-4 sm:p-10 border border-[#f5f2e8] shadow-sm min-h-[400px]">
         {isLoading && !isEditing && <div className="absolute inset-0 bg-white/60 flex items-center justify-center z-50 rounded-[2rem]"><Loader2 className="w-10 h-10 animate-spin text-[#1a4d2e]" /></div>}
 
         {activeTab === 'orders' && (
            <div className="space-y-4">
-             <div className="flex items-center gap-2 mb-2">
-               <ClipboardList className="text-[#1a4d2e] w-5 h-5" />
-               <h3 className="font-black text-xl uppercase tracking-tighter text-black">Kundenkörbe</h3>
-             </div>
+             <div className="flex items-center gap-2 mb-2"><ClipboardList className="text-[#1a4d2e] w-5 h-5" /><h3 className="font-black text-xl uppercase tracking-tighter text-black">Kundenkörbe</h3></div>
              {orders.length === 0 ? <p className="text-center py-20 text-gray-300 font-black uppercase tracking-widest text-[10px]">Keine Bestellungen</p> : 
-               [...orders].reverse().map(o => (
+               orders.map(o => (
                  <div key={o.id} className="border-2 rounded-[1.5rem] border-[#f5f2e8] bg-[#fdfbf7] overflow-hidden">
                     <button onClick={() => setExpandedOrderId(expandedOrderId === o.id ? null : o.id)} className="w-full flex justify-between items-center p-4 hover:bg-white transition-colors">
                       <div className="text-left">
                         <h4 className="text-lg font-black uppercase tracking-tighter text-black">{o.customerName}</h4>
                         <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{o.items.length} Posten • {o.totalAmount.toFixed(2)}€ • {o.weekLabel}</p>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <div className={`px-2 py-1 rounded-full text-[8px] font-black uppercase tracking-widest ${o.items.every(i => i.packed) ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
-                          {o.items.every(i => i.packed) ? 'Fertig' : 'Packen'}
-                        </div>
-                        {expandedOrderId === o.id ? <ChevronUp className="w-4 h-4 text-black" /> : <ChevronDown className="w-4 h-4 text-black" />}
+                      <div className={`px-2 py-1 rounded-full text-[8px] font-black uppercase tracking-widest ${o.items.every(i => i.packed) ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                        {o.items.every(i => i.packed) ? 'Fertig' : 'Packen'}
                       </div>
                     </button>
                     {expandedOrderId === o.id && (
                       <div className="p-4 bg-white border-t border-[#f5f2e8] space-y-3">
                         {o.items.map((item, idx) => (
-                          <button key={idx} onClick={() => togglePacked(o.id, idx)} className={`w-full flex items-center gap-4 p-4 rounded-xl border-2 transition-all ${item.packed ? 'bg-[#f5f2e8] border-transparent opacity-40' : 'bg-white border-[#1a4d2e]/10 shadow-sm'}`}>
+                          <button key={idx} onClick={() => togglePacked(o.id, idx)} className={`w-full flex items-center gap-4 p-4 rounded-xl border-2 transition-all ${item.packed ? 'bg-gray-50 border-transparent opacity-40' : 'bg-white border-[#1a4d2e]/10'}`}>
                             {item.packed ? <CheckSquare className="w-8 h-8 text-[#1a4d2e]" /> : <Square className="w-8 h-8 text-gray-200" />}
-                            <div className="text-left">
-                              <p className="text-2xl font-black leading-none text-black">{item.quantity}x</p>
-                              <p className="text-sm font-black text-[#1a4d2e] uppercase tracking-tighter">{item.productName}</p>
-                            </div>
+                            <div className="text-left"><p className="text-2xl font-black leading-none">{item.quantity}x</p><p className="text-sm font-black text-[#1a4d2e] uppercase">{item.productName}</p></div>
                           </button>
                         ))}
                       </div>
@@ -231,22 +207,13 @@ const Admin: React.FC = () => {
 
         {activeTab === 'harvest' && (
           <div className="space-y-4">
-            <div className="flex items-center gap-2 mb-2">
-               <ShoppingBasket className="text-[#1a4d2e] w-5 h-5" />
-               <h3 className="font-black text-xl uppercase tracking-tighter text-black">Ernteplan</h3>
-            </div>
+            <div className="flex items-center gap-2 mb-2"><ShoppingBasket className="text-[#1a4d2e] w-5 h-5" /><h3 className="font-black text-xl uppercase tracking-tighter text-black">Ernteplan</h3></div>
             {harvestSummary.map(([name, data]) => {
               const isHarvested = harvestedItems.includes(name);
               return (
-                <div key={name} onClick={() => toggleHarvested(name)} className={`flex items-center justify-between p-5 rounded-[1.5rem] border-2 transition-all ${isHarvested ? 'bg-[#f5f2e8] border-transparent opacity-40' : 'bg-[#fdfaf3] border-[#f5f2e8] shadow-sm'}`}>
-                  <div className="text-left">
-                    <p className={`text-[9px] font-black uppercase tracking-widest mb-1 ${isHarvested ? 'text-gray-400' : 'text-[#1a4d2e]'}`}>Gesamt</p>
-                    <p className={`text-4xl font-black tracking-tighter ${isHarvested ? 'line-through text-gray-400' : 'text-black'}`}>{data.quantity} <span className="text-xs uppercase">{data.unit}</span></p>
-                    <p className={`text-lg font-black uppercase tracking-tighter mt-1 ${isHarvested ? 'text-gray-400' : 'text-black'}`}>{name}</p>
-                  </div>
-                  <div className={`w-12 h-12 rounded-xl border-2 flex items-center justify-center shrink-0 ${isHarvested ? 'bg-[#1a4d2e] border-transparent text-white' : 'bg-white border-gray-100 text-gray-200'}`}>
-                    <CheckCircle2 className="w-7 h-7" />
-                  </div>
+                <div key={name} onClick={() => toggleHarvested(name)} className={`flex items-center justify-between p-5 rounded-[1.5rem] border-2 transition-all ${isHarvested ? 'bg-[#f5f2e8] border-transparent opacity-40' : 'bg-[#fdfaf3] border-[#f5f2e8]'}`}>
+                  <div className="text-left"><p className={`text-[9px] font-black uppercase tracking-widest ${isHarvested ? 'text-gray-400' : 'text-[#1a4d2e]'}`}>Gesamt</p><p className="text-4xl font-black tracking-tighter">{data.quantity} <span className="text-xs">{data.unit}</span></p><p className="text-lg font-black uppercase tracking-tighter">{name}</p></div>
+                  <div className={`w-12 h-12 rounded-xl border-2 flex items-center justify-center shrink-0 ${isHarvested ? 'bg-[#1a4d2e] text-white border-transparent' : 'bg-white text-gray-200'}`}><CheckCircle2 className="w-7 h-7" /></div>
                 </div>
               );
             })}
@@ -259,96 +226,44 @@ const Admin: React.FC = () => {
               <form onSubmit={handleSaveProduct} className="space-y-6">
                 <h3 className="text-xl font-black uppercase tracking-tighter text-black">{currentProduct.id ? 'Sorte anpassen' : 'Neu anlegen'}</h3>
                 <div onClick={() => fileInputRef.current?.click()} className="h-48 bg-[#fdfaf3] rounded-[1.5rem] border-2 border-dashed border-gray-200 flex items-center justify-center cursor-pointer overflow-hidden">
-                  {currentProduct.imageUrl ? <img src={currentProduct.imageUrl} className="w-full h-full object-cover" /> : <div className="text-center"><Camera className="w-8 h-8 mx-auto text-gray-300" /><p className="text-[8px] font-black text-gray-400 mt-2 uppercase">BILD</p></div>}
-                  <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
+                  {currentProduct.imageUrl ? <img src={currentProduct.imageUrl} className="w-full h-full object-cover" /> : <div className="text-center"><Camera className="w-8 h-8 mx-auto text-gray-300" /></div>}
+                  <input type="file" ref={fileInputRef} onChange={e => { const file = e.target.files?.[0]; if(file) { const reader = new FileReader(); reader.onloadend = () => setCurrentProduct({...currentProduct, imageUrl: reader.result as string}); reader.readAsDataURL(file); } }} className="hidden" accept="image/*" />
                 </div>
                 <div className="space-y-4">
-                    <input type="text" value={currentProduct.name || ''} onChange={e => setCurrentProduct({...currentProduct, name: e.target.value})} placeholder="NAME DER SORTE" className="w-full p-4 bg-[#fdfaf3] rounded-2xl font-black uppercase text-black border-2 border-transparent focus:border-[#1a4d2e] outline-none" required />
-                    
-                    <div className="p-4 bg-[#fdfaf3] rounded-2xl border-2 border-[#f5f2e8]">
-                      <label className="text-[8px] font-black uppercase tracking-widest text-[#1a4d2e] mb-2 block">Verfügbarkeit & Info</label>
-                      <textarea value={currentProduct.description || ''} onChange={e => setCurrentProduct({...currentProduct, description: e.target.value})} placeholder="Beschreibe kurz diese Sorte..." className="w-full bg-transparent font-medium text-black outline-none min-h-[80px] text-sm resize-none" />
-                    </div>
-
+                    <input type="text" value={currentProduct.name || ''} onChange={e => setCurrentProduct({...currentProduct, name: e.target.value})} placeholder="NAME DER SORTE" className="w-full p-4 bg-[#fdfaf3] rounded-2xl font-black uppercase border-2 border-transparent focus:border-[#1a4d2e] outline-none" required />
                     <div className="grid grid-cols-2 gap-3">
-                      <div className="p-4 bg-[#fdfaf3] rounded-2xl border-2 border-[#f5f2e8]">
-                        <label className="text-[8px] font-black uppercase tracking-widest text-gray-400 mb-1 block">Grundpreis</label>
-                        <input type="number" step="0.01" value={currentProduct.pricePerUnit || ''} onChange={e => setCurrentProduct({...currentProduct, pricePerUnit: Number(e.target.value)})} placeholder="PREIS" className="w-full bg-transparent font-black outline-none" required />
+                      <input type="number" step="0.01" value={currentProduct.pricePerUnit || ''} onChange={e => setCurrentProduct({...currentProduct, pricePerUnit: Number(e.target.value)})} placeholder="PREIS" className="p-4 bg-[#fdfaf3] rounded-2xl font-black" required />
+                      <input type="text" value={currentProduct.unit || ''} onChange={e => setCurrentProduct({...currentProduct, unit: e.target.value})} placeholder="EINHEIT" className="p-4 bg-[#fdfaf3] rounded-2xl font-black uppercase" required />
+                    </div>
+                    {/* AKTIONEN */}
+                    <div className="p-4 bg-[#1a4d2e]/5 rounded-2xl border border-[#1a4d2e]/10 flex gap-4">
+                      <div className="flex-1">
+                        <label className="text-[8px] font-black uppercase tracking-widest text-[#1a4d2e] mb-1 block">Rabatt %</label>
+                        <input type="number" value={currentProduct.discount || 0} onChange={e => setCurrentProduct({...currentProduct, discount: Number(e.target.value)})} className="w-full p-2 bg-white rounded-lg font-black" />
                       </div>
-                      <div className="p-4 bg-[#fdfaf3] rounded-2xl border-2 border-[#f5f2e8]">
-                        <label className="text-[8px] font-black uppercase tracking-widest text-gray-400 mb-1 block">Einheit</label>
-                        <input type="text" value={currentProduct.unit || ''} onChange={e => setCurrentProduct({...currentProduct, unit: e.target.value})} placeholder="EINHEIT" className="w-full bg-transparent font-black uppercase outline-none" required />
+                      <div className="flex-1 flex items-end">
+                        <button type="button" onClick={() => setCurrentProduct({...currentProduct, isBogo: !currentProduct.isBogo})} className={`w-full py-3 rounded-lg font-black text-[9px] uppercase tracking-widest border-2 transition-all ${currentProduct.isBogo ? 'bg-[#1a4d2e] text-white border-transparent' : 'bg-white text-gray-400'}`}>1+1 Gratis</button>
                       </div>
                     </div>
-
-                    {/* AKTIONEN BEREICH */}
-                    <div className="p-6 bg-[#1a4d2e]/5 rounded-3xl border border-[#1a4d2e]/10 space-y-4">
-                      <label className="text-[10px] font-black uppercase tracking-widest text-[#1a4d2e] block">Aktionen & Rabatte</label>
-                      
-                      <div className="flex items-center justify-between gap-4">
-                        <div className="flex-1">
-                          <label className="text-[8px] font-black uppercase text-gray-400 mb-1 block">Rabatt (%)</label>
-                          <input 
-                            type="number" 
-                            min="0" 
-                            max="100" 
-                            value={currentProduct.discount || 0} 
-                            onChange={e => setCurrentProduct({...currentProduct, discount: Number(e.target.value)})} 
-                            className="w-full p-3 bg-white rounded-xl font-black outline-none border border-gray-100" 
-                          />
-                        </div>
-                        <button 
-                          type="button"
-                          onClick={() => setCurrentProduct({...currentProduct, isBogo: !currentProduct.isBogo})}
-                          className={`flex-1 p-3 rounded-xl border-2 font-black text-[9px] uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${currentProduct.isBogo ? 'bg-[#1a4d2e] text-white border-transparent' : 'bg-white text-gray-400 border-gray-100'}`}
-                        >
-                          <Zap className={`w-3 h-3 ${currentProduct.isBogo ? 'fill-current' : ''}`} />
-                          1+1 GRATIS
-                        </button>
-                      </div>
-                    </div>
-
                     <div className="p-4 bg-[#fdfaf3] rounded-2xl border-2 border-[#f5f2e8]">
-                        <label className="text-[8px] font-black uppercase tracking-widest text-[#1a4d2e] mb-1 block">Aktueller Bestand am Hof</label>
+                        <label className="text-[8px] font-black uppercase tracking-widest text-[#1a4d2e] mb-1 block">Bestand</label>
                         <input type="number" value={currentProduct.stockQuantity || 0} onChange={e => setCurrentProduct({...currentProduct, stockQuantity: Number(e.target.value)})} className="w-full bg-transparent text-2xl font-black outline-none" />
                     </div>
                 </div>
                 <div className="flex gap-3">
                   <button type="button" onClick={() => setIsEditing(false)} className="flex-1 py-4 bg-gray-100 rounded-2xl font-black uppercase text-[10px]">Abbruch</button>
-                  <button type="submit" disabled={isLoading} className="flex-1 py-4 bg-[#1a4d2e] text-white rounded-2xl font-black uppercase text-[10px] flex items-center justify-center gap-2">
-                    {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Save className="w-4 h-4" /> Speichern</>}
-                  </button>
+                  <button type="submit" className="flex-1 py-4 bg-[#1a4d2e] text-white rounded-2xl font-black uppercase text-[10px] flex items-center justify-center gap-2"><Save className="w-4 h-4" /> Speichern</button>
                 </div>
               </form>
             ) : (
               <>
-                <div className="flex justify-between items-center">
-                  <h3 className="font-black text-xl uppercase tracking-tighter text-black">Sortiment</h3>
-                  <button onClick={() => { setCurrentProduct({ isActive: true, unit: 'Stück', stockQuantity: 10, discount: 0, isBogo: false }); setIsEditing(true); }} className="bg-black text-white px-4 py-3 rounded-xl font-black text-[9px] uppercase flex items-center gap-2"><Plus className="w-3 h-3" /> Neu</button>
-                </div>
+                <div className="flex justify-between items-center"><h3 className="font-black text-xl uppercase tracking-tighter text-black">Sortiment</h3><button onClick={() => { setCurrentProduct({ isActive: true, unit: 'Stück', stockQuantity: 10 }); setIsEditing(true); }} className="bg-black text-white px-4 py-3 rounded-xl font-black text-[9px] uppercase flex items-center gap-2"><Plus className="w-3 h-3" /> Neu</button></div>
                 <div className="grid grid-cols-1 gap-4">
                   {products.map(p => (
-                    <div key={p.id} className={`border-2 rounded-[1.5rem] overflow-hidden bg-[#fdfbf7] border-[#f5f2e8] p-4 flex gap-4 items-center transition-opacity ${p.isActive ? 'opacity-100' : 'opacity-40'}`}>
+                    <div key={p.id} className="border-2 rounded-[1.5rem] bg-[#fdfbf7] border-[#f5f2e8] p-4 flex gap-4 items-center">
                       <img src={p.imageUrl} className="w-20 h-20 rounded-xl object-cover" />
-                      <div className="flex-1 min-w-0">
-                         <h4 className="font-black text-sm uppercase truncate text-black">{p.name}</h4>
-                         <div className="flex items-center gap-2">
-                            <p className="text-[9px] font-black text-[#1a4d2e] uppercase">{p.pricePerUnit.toFixed(2)}€ / {p.unit}</p>
-                            {(p.discount || 0) > 0 && <span className="bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded-md text-[7px] font-black">-{p.discount}%</span>}
-                            {p.isBogo && <span className="bg-green-100 text-green-600 px-1.5 py-0.5 rounded-md text-[7px] font-black">1+1</span>}
-                         </div>
-                         <div className="flex items-center gap-3 mt-2">
-                          <button onClick={() => handleUpdateStock(p.id, -1)} className="w-8 h-8 bg-white border border-gray-100 rounded-lg flex items-center justify-center"><Minus className="w-3 h-3 text-red-500" /></button>
-                          <p className="text-lg font-black leading-none min-w-[30px] text-center">{p.stockQuantity}</p>
-                          <button onClick={() => handleUpdateStock(p.id, 1)} className="w-8 h-8 bg-white border border-gray-100 rounded-lg flex items-center justify-center"><Plus className="w-3 h-3 text-green-500" /></button>
-                        </div>
-                      </div>
-                      <div className="flex flex-col gap-2">
-                        <button onClick={() => handleToggleVisibility(p)} className={`p-3 bg-white border rounded-xl ${p.isActive ? 'text-[#1a4d2e]' : 'text-gray-300'}`}>
-                          {p.isActive ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-                        </button>
-                        <button onClick={() => { setCurrentProduct(p); setIsEditing(true); }} className="p-3 bg-white border border-gray-100 rounded-xl"><Edit2 className="w-4 h-4" /></button>
-                      </div>
+                      <div className="flex-1 min-w-0"><h4 className="font-black text-sm uppercase truncate">{p.name}</h4><p className="text-[9px] font-black text-[#1a4d2e]">{p.pricePerUnit.toFixed(2)}€ / {p.unit}</p><div className="flex items-center gap-3 mt-2"><button onClick={() => handleUpdateStock(p.id, -1)} className="w-8 h-8 bg-white border rounded-lg flex items-center justify-center"><Minus className="w-3 h-3 text-red-500" /></button><p className="text-lg font-black min-w-[30px] text-center">{p.stockQuantity}</p><button onClick={() => handleUpdateStock(p.id, 1)} className="w-8 h-8 bg-white border rounded-lg flex items-center justify-center"><Plus className="w-3 h-3 text-green-500" /></button></div></div>
+                      <div className="flex flex-col gap-2"><button onClick={() => handleToggleVisibility(p)} className={`p-3 bg-white border rounded-xl ${p.isActive ? 'text-[#1a4d2e]' : 'text-gray-300'}`}>{p.isActive ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}</button><button onClick={() => { setCurrentProduct(p); setIsEditing(true); }} className="p-3 bg-white border rounded-xl"><Edit2 className="w-4 h-4" /></button></div>
                     </div>
                   ))}
                 </div>
@@ -358,43 +273,39 @@ const Admin: React.FC = () => {
         )}
 
         {activeTab === 'settings' && (
-          <div className="max-w-xl mx-auto space-y-8 py-4">
-            <h4 className="font-black text-xl uppercase tracking-tighter text-black text-center">Shop-Setup</h4>
+          <div className="max-w-xl mx-auto space-y-8 py-4 text-center">
+            <h4 className="font-black text-xl uppercase tracking-tighter text-black">Setup & Verwaltung</h4>
             <div className="space-y-6">
                 <div className="p-6 bg-[#fdfaf3] rounded-3xl border border-[#f5f2e8]">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-4 block">Abholung am Datum</label>
-                  <input type="date" value={settings.currentPickupDate} onChange={e => setSettings({...settings, currentPickupDate: e.target.value})} className="w-full p-4 rounded-2xl font-black text-black outline-none border-2 border-transparent focus:border-[#1a4d2e]" />
+                  <label className="text-[10px] font-black uppercase text-gray-400 mb-4 block">Nächster Abholtermin</label>
+                  <input type="date" value={settings.currentPickupDate} onChange={e => setSettings({...settings, currentPickupDate: e.target.value})} className="w-full p-4 rounded-2xl font-black outline-none border-2 border-transparent focus:border-[#1a4d2e]" />
                 </div>
                 <div className="p-6 bg-[#fdfaf3] rounded-3xl border border-[#f5f2e8]">
-                   <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-4 block">Wochentag der Shop-Öffnung</label>
-                   <select value={settings.openDay} onChange={e => setSettings({...settings, openDay: e.target.value})} className="w-full p-4 rounded-2xl font-black uppercase outline-none">
+                   <label className="text-[10px] font-black uppercase text-gray-400 mb-4 block">Shop-Öffnung ab</label>
+                   <select value={settings.openDay} onChange={e => setSettings({...settings, openDay: e.target.value})} className="w-full p-4 rounded-2xl font-black uppercase">
                      {['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'].map(d => <option key={d} value={d}>{d}</option>)}
                    </select>
                 </div>
             </div>
             
-            <div className="flex flex-col gap-3">
-              <button onClick={async () => { try { await ApiService.saveSettings(settings); setSaveSuccess(true); setTimeout(() => setSaveSuccess(false), 2000); } catch(e) { alert("Fehler beim Speichern der Settings"); } }} className="w-full bg-[#1a4d2e] text-white py-6 rounded-2xl font-black uppercase tracking-widest text-xs shadow-lg">
-                {saveSuccess ? 'Konfiguration gesichert!' : 'Setup speichern'}
-              </button>
+            <button onClick={async () => { await ApiService.saveSettings(settings); setSaveSuccess(true); setTimeout(() => setSaveSuccess(false), 2000); }} className="w-full bg-[#1a4d2e] text-white py-6 rounded-2xl font-black uppercase text-xs shadow-lg">{saveSuccess ? 'Gespeichert!' : 'Einstellungen speichern'}</button>
 
-              <div className="pt-10 border-t border-gray-100 mt-6">
-                <p className="text-[10px] font-black uppercase tracking-widest text-red-500 mb-4 text-center">Gefahrenbereich (Neue Woche)</p>
-                {showResetConfirm ? (
-                  <div className="bg-red-50 p-6 rounded-3xl border-2 border-red-200 text-center animate-in zoom-in-95">
-                    <AlertTriangle className="w-8 h-8 text-red-600 mx-auto mb-3" />
-                    <p className="text-xs font-bold text-red-800 mb-4">Willst du wirklich ALLE Bestellungen löschen? Das kann nicht rückgängig gemacht werden.</p>
-                    <div className="flex gap-2">
-                      <button onClick={() => setShowResetConfirm(false)} className="flex-1 py-3 bg-white border border-red-200 rounded-xl font-black text-[9px] uppercase">Abbruch</button>
-                      <button onClick={handleResetOrders} className="flex-1 py-3 bg-red-600 text-white rounded-xl font-black text-[9px] uppercase">Ja, alles löschen</button>
-                    </div>
+            <div className="pt-10 border-t border-gray-100 mt-10">
+              <p className="text-[10px] font-black uppercase text-red-500 mb-6">Gefahrenbereich</p>
+              {showResetConfirm ? (
+                <div className="bg-red-50 p-6 rounded-3xl border-2 border-red-200 animate-in zoom-in-95">
+                  <AlertTriangle className="w-8 h-8 text-red-600 mx-auto mb-3" />
+                  <p className="text-xs font-bold text-red-800 mb-4">Möchtest du wirklich ALLE Bestellungen dieser Woche löschen?</p>
+                  <div className="flex gap-2">
+                    <button onClick={() => setShowResetConfirm(false)} className="flex-1 py-3 bg-white border border-red-200 rounded-xl font-black text-[9px] uppercase">Abbruch</button>
+                    <button onClick={handleResetOrders} className="flex-1 py-3 bg-red-600 text-white rounded-xl font-black text-[9px] uppercase">Ja, Löschen</button>
                   </div>
-                ) : (
-                  <button onClick={() => setShowResetConfirm(true)} className="w-full bg-white border-2 border-red-100 text-red-500 hover:bg-red-50 py-4 rounded-2xl font-black uppercase tracking-widest text-[9px] flex items-center justify-center gap-2 transition-colors">
-                    <Trash2 className="w-4 h-4" /> Bestellungen für neue Woche zurücksetzen
-                  </button>
-                )}
-              </div>
+                </div>
+              ) : (
+                <button onClick={() => setShowResetConfirm(true)} className="w-full bg-white border-2 border-red-100 text-red-500 hover:bg-red-50 py-4 rounded-2xl font-black uppercase tracking-widest text-[9px] flex items-center justify-center gap-2">
+                  <Trash2 className="w-4 h-4" /> Bestellungen für neue Woche zurücksetzen
+                </button>
+              )}
             </div>
           </div>
         )}
