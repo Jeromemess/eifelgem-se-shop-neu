@@ -2,43 +2,38 @@
 import { createClient } from '@supabase/supabase-js';
 import { Product, Order, StoreSettings, Customer, OrderItem } from '../types';
 
-// Platzhalter für Netlify Environment Variables
-const SUPABASE_URL = (import.meta as any).env?.VITE_SUPABASE_URL || 'DEINE_SUPABASE_URL'; 
-const SUPABASE_ANON_KEY = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || 'DEIN_SUPABASE_ANON_KEY';
+const SUPABASE_URL = (import.meta as any).env?.VITE_SUPABASE_URL || '';
+const SUPABASE_ANON_KEY = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || '';
 
-const isConfigured = SUPABASE_URL !== 'DEINE_SUPABASE_URL' && SUPABASE_URL.startsWith('http');
-
-let supabase: any = null;
-if (isConfigured) {
-  try {
-    supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-  } catch (e) {
-    console.error("Supabase Init Error:", e);
-  }
-}
+const isConfigured = SUPABASE_URL.length > 10 && SUPABASE_ANON_KEY.length > 10;
+const supabase = isConfigured ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
 const STORAGE_KEYS = {
-  PRODUCTS: 'eifel_gemuese_products',
-  ORDERS: 'eifel_gemuese_orders',
-  SETTINGS: 'eifel_gemuese_settings',
-  CUSTOMERS: 'eifel_gemuese_customers',
   CURRENT_USER: 'eifel_gemuese_auth',
   HARVESTED: 'eifel_gemuese_harvested'
 };
 
-const DEFAULT_PRODUCTS: Product[] = [
-  { id: 'p1', name: 'Möhren', pricePerUnit: 2.2, unit: 'Bund', imageUrl: 'https://images.unsplash.com/photo-1598170845058-32b9d6a5da37?w=400', stockQuantity: 20, isActive: true, description: 'Knackig & Süß direkt vom Feld.' },
-  { id: 'p2', name: 'Kartoffeln', pricePerUnit: 4.5, unit: 'kg', imageUrl: 'https://images.unsplash.com/photo-1518977676601-b53f02bad675?w=400', stockQuantity: 50, isActive: true, description: 'Festkochende Sorte aus der Eifel.' },
-  { id: 'p3', name: 'Gurken', pricePerUnit: 1.5, unit: 'Stück', imageUrl: 'https://images.unsplash.com/photo-1449300079323-02e209d9d02d?w=400', stockQuantity: 15, isActive: true, description: 'Frische Landgurken.' }
-];
+const mapProduct = (p: any): Product => ({
+  id: p.id,
+  name: p.name || 'Unbekannt',
+  pricePerUnit: p.price_per_unit ? Number(p.price_per_unit) : 0,
+  unit: p.unit || 'Stück',
+  imageUrl: p.image_url || 'https://images.unsplash.com/photo-1566385908041-9c9ca335606d?w=400',
+  stockQuantity: p.stock_quantity !== undefined ? Number(p.stock_quantity) : 0,
+  isActive: p.is_active ?? true,
+  description: p.description || '',
+  discount: p.discount ? Number(p.discount) : 0,
+  isBogo: p.is_bogo ?? false
+});
 
-const getLocal = <T>(key: string, def: T): T => {
-  try {
-    const s = localStorage.getItem(key);
-    return s ? JSON.parse(s) : def;
-  } catch { return def; }
-};
-const setLocal = (key: string, val: any) => localStorage.setItem(key, JSON.stringify(val));
+const mapOrder = (o: any): Order => ({
+  id: o.id,
+  customerName: o.customer_name,
+  createdAt: o.created_at,
+  weekLabel: o.week_label,
+  items: Array.isArray(o.items) ? o.items : [],
+  totalAmount: Number(o.total_amount)
+});
 
 export const getWeekLabel = (date: Date): string => {
   const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
@@ -53,19 +48,13 @@ const DAY_MAP: Record<string, number> = { 'Sonntag': 0, 'Montag': 1, 'Dienstag':
 
 export const ApiService = {
   async isShopOpen() {
+    if (!isConfigured) return { isOpen: true };
     try {
       const settings = await this.getSettings();
       const now = new Date();
       const currentDay = now.getDay();
       const openDayIdx = DAY_MAP[settings.openDay] ?? 0;
       const pickupDayIdx = DAY_MAP[settings.pickupDay] ?? 3;
-
-      if (currentDay === pickupDayIdx) {
-        const [h, m] = settings.pickupTime.split(':').map(Number);
-        const pTime = new Date();
-        pTime.setHours(h, m, 0, 0);
-        if (now >= pTime) return { isOpen: false, nextOpen: settings.openDay };
-      }
       const isOpen = openDayIdx <= pickupDayIdx 
         ? (currentDay >= openDayIdx && currentDay <= pickupDayIdx)
         : (currentDay >= openDayIdx || currentDay <= pickupDayIdx);
@@ -75,133 +64,153 @@ export const ApiService = {
     }
   },
 
-  async getCurrentUser() { return getLocal<Customer | null>(STORAGE_KEYS.CURRENT_USER, null); },
-  
-  async logout() { localStorage.removeItem(STORAGE_KEYS.CURRENT_USER); },
+  async getCurrentUser(): Promise<Customer | null> {
+    const s = localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
+    return s ? JSON.parse(s) : null;
+  },
+
+  async logout() {
+    localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
+  },
 
   async login(firstName: string, lastName: string) {
+    if (!supabase) throw new Error("Supabase nicht konfiguriert!");
+    
+    const { data: existing } = await supabase.from('customers').select('*').ilike('first_name', firstName).ilike('last_name', lastName);
+    
     let customer: Customer;
-    if (isConfigured && supabase) {
-      const { data } = await supabase.from('customers').select('*').ilike('firstName', firstName).ilike('lastName', lastName);
-      if (data && data.length > 0) {
-        customer = data[0];
-      } else {
-        const { data: neu, error } = await supabase.from('customers').insert([{ firstName, lastName, registeredAt: new Date().toISOString(), status: 'active' }]).select().single();
-        if (error) throw error;
-        customer = neu;
-      }
+    if (existing && existing.length > 0) {
+      customer = {
+        id: existing[0].id,
+        firstName: existing[0].first_name,
+        lastName: existing[0].last_name,
+        registeredAt: existing[0].registered_at,
+        status: 'active'
+      };
     } else {
-      const customers = getLocal<Customer[]>(STORAGE_KEYS.CUSTOMERS, []);
-      let found = customers.find(c => c.firstName.toLowerCase() === firstName.toLowerCase() && c.lastName.toLowerCase() === lastName.toLowerCase());
-      if (!found) {
-        found = { id: Math.random().toString(36).substr(2, 9), firstName, lastName, registeredAt: new Date().toISOString(), status: 'active' };
-        customers.push(found);
-        setLocal(STORAGE_KEYS.CUSTOMERS, customers);
-      }
-      customer = found;
+      const { data: neu, error } = await supabase.from('customers').insert([{ first_name: firstName, last_name: lastName }]).select().single();
+      if (error) throw error;
+      customer = {
+        id: neu.id,
+        firstName: neu.first_name,
+        lastName: neu.last_name,
+        registeredAt: neu.registered_at,
+        status: 'active'
+      };
     }
-    setLocal(STORAGE_KEYS.CURRENT_USER, customer);
+    localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(customer));
     return customer;
   },
 
   async getProducts(): Promise<Product[]> {
-    if (isConfigured && supabase) {
-      const { data, error } = await supabase.from('products').select('*').order('name');
-      if (error) return getLocal<Product[]>(STORAGE_KEYS.PRODUCTS, DEFAULT_PRODUCTS);
-      if (!data || data.length === 0) return getLocal<Product[]>(STORAGE_KEYS.PRODUCTS, DEFAULT_PRODUCTS);
-      return data;
-    }
-    return getLocal<Product[]>(STORAGE_KEYS.PRODUCTS, DEFAULT_PRODUCTS);
+    if (!supabase) return [];
+    const { data, error } = await supabase.from('products').select('*').order('name');
+    if (error) return [];
+    return (data || []).map(mapProduct);
   },
 
   async saveProduct(p: Product) {
-    if (isConfigured && supabase) {
-      await supabase.from('products').upsert(p);
-    } else {
-      const products = await this.getProducts();
-      const idx = products.findIndex(x => x.id === p.id);
-      if (idx > -1) products[idx] = p; else products.push(p);
-      setLocal(STORAGE_KEYS.PRODUCTS, products);
+    if (!supabase) throw new Error("Keine DB-Verbindung");
+    
+    const dbProduct: any = {
+      name: p.name,
+      price_per_unit: Number(p.pricePerUnit),
+      unit: p.unit,
+      image_url: p.imageUrl,
+      stock_quantity: Number(p.stockQuantity),
+      is_active: p.isActive,
+      description: p.description,
+      discount: Number(p.discount || 0),
+      is_bogo: !!p.isBogo
+    };
+    
+    if (p.id && p.id.length > 10) { 
+      dbProduct.id = p.id;
     }
+
+    const { error } = await supabase.from('products').upsert(dbProduct);
+    if (error) throw error;
   },
 
-  async getOrders() {
-    if (isConfigured && supabase) {
-      const { data } = await supabase.from('orders').select('*').order('createdAt', { ascending: false });
-      return data || [];
-    }
-    return getLocal<Order[]>(STORAGE_KEYS.ORDERS, []);
+  async getOrders(): Promise<Order[]> {
+    if (!supabase) return [];
+    const { data, error } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
+    if (error) return [];
+    return (data || []).map(mapOrder);
   },
 
   async submitOrder(customer: Customer, items: OrderItem[], total: number, week: string) {
+    if (!supabase) throw new Error("Keine Verbindung");
     const settings = await this.getSettings();
     const finalWeek = settings.currentPickupDate ? getWeekLabel(new Date(settings.currentPickupDate)) : week;
-    const name = `${customer.firstName} ${customer.lastName}`;
     
-    if (isConfigured && supabase) {
-      const { data: existing } = await supabase.from('orders').select('*').eq('customerName', name).eq('weekLabel', finalWeek);
-      if (existing && existing.length > 0) {
-        const order = existing[0];
-        items.forEach(newItem => {
-          const found = order.items.find((i: any) => i.productId === newItem.productId);
-          if (found) { found.quantity += newItem.quantity; found.packed = false; }
-          else { order.items.push(newItem); }
-        });
-        const { data, error } = await supabase.from('orders').update({ items: order.items, totalAmount: order.totalAmount + total, createdAt: new Date().toISOString() }).eq('id', order.id).select().single();
-        if (error) throw error;
-        return data;
-      } else {
-        const { data, error } = await supabase.from('orders').insert([{ customerName: name, createdAt: new Date().toISOString(), weekLabel: finalWeek, items, totalAmount: total }]).select().single();
-        if (error) throw error;
-        return data;
-      }
-    } else {
-      const orders = await this.getOrders();
-      const newOrder = { id: Math.random().toString(36).substr(2, 9), customerName: name, createdAt: new Date().toISOString(), weekLabel: finalWeek, items, totalAmount: total };
-      orders.push(newOrder);
-      setLocal(STORAGE_KEYS.ORDERS, orders);
-      return newOrder;
-    }
-  },
+    const { data, error } = await supabase.from('orders').insert([{
+      customer_name: `${customer.firstName} ${customer.lastName}`,
+      week_label: finalWeek,
+      items: items,
+      total_amount: total
+    }]).select().single();
+    
+    if (error) throw error;
 
-  async togglePackedStatus(id: string, idx: number) {
-    if (isConfigured && supabase) {
-      const { data } = await supabase.from('orders').select('items').eq('id', id).single();
-      if (data) {
-        const items = [...data.items];
-        items[idx].packed = !items[idx].packed;
-        await supabase.from('orders').update({ items }).eq('id', id);
+    for (const item of items) {
+      const { data: prod } = await supabase.from('products').select('stock_quantity').eq('id', item.productId).single();
+      if (prod) {
+        const newQty = Math.max(0, Number(prod.stock_quantity) - item.quantity);
+        await supabase.from('products').update({ stock_quantity: newQty }).eq('id', item.productId);
       }
-    } else {
-      const orders = await this.getOrders();
-      const o = orders.find(x => x.id === id);
-      if (o) { o.items[idx].packed = !o.items[idx].packed; setLocal(STORAGE_KEYS.ORDERS, orders); }
     }
+    return mapOrder(data);
   },
 
   async getSettings(): Promise<StoreSettings> {
-    const fallback = { pickupDay: 'Mittwoch', pickupTime: '17:00', openDay: 'Sonntag', maxSlots: 50, currentPickupDate: '' };
-    if (isConfigured && supabase) {
-      const { data } = await supabase.from('settings').select('*').single();
-      return data || fallback;
-    }
-    return getLocal<StoreSettings>(STORAGE_KEYS.SETTINGS, fallback);
+    const fallback: StoreSettings = { pickupDay: 'Mittwoch', pickupTime: '17:00', openDay: 'Sonntag', maxSlots: 50, currentPickupDate: '' };
+    if (!supabase) return fallback;
+    const { data } = await supabase.from('settings').select('*').eq('id', 1).maybeSingle();
+    if (!data) return fallback;
+    return {
+      pickupDay: data.pickup_day || 'Mittwoch',
+      pickupTime: data.pickup_time || '17:00',
+      openDay: data.open_day || 'Sonntag',
+      maxSlots: data.max_slots || 50,
+      currentPickupDate: data.current_pickup_date || ''
+    };
   },
 
   async saveSettings(s: StoreSettings) {
-    if (isConfigured && supabase) {
-      await supabase.from('settings').upsert({ id: 1, ...s });
-    } else {
-      setLocal(STORAGE_KEYS.SETTINGS, s);
-    }
+    if (!supabase) return;
+    const dbSettings = {
+      id: 1,
+      pickup_day: s.pickupDay,
+      pickup_time: s.pickupTime,
+      open_day: s.openDay,
+      max_slots: s.maxSlots,
+      current_pickup_date: s.currentPickupDate
+    };
+    await supabase.from('settings').upsert(dbSettings);
   },
 
-  async getHarvestedStatus() { return getLocal<string[]>(STORAGE_KEYS.HARVESTED, []); },
-  
+  async getHarvestedStatus(): Promise<string[]> {
+    const s = localStorage.getItem(STORAGE_KEYS.HARVESTED);
+    return s ? JSON.parse(s) : [];
+  },
+
   async toggleHarvested(name: string) {
     const h = await this.getHarvestedStatus();
     const i = h.indexOf(name);
     if (i > -1) h.splice(i, 1); else h.push(name);
-    setLocal(STORAGE_KEYS.HARVESTED, h);
+    localStorage.setItem(STORAGE_KEYS.HARVESTED, JSON.stringify(h));
+  },
+
+  async togglePackedStatus(id: string, idx: number) {
+    if (!supabase) return;
+    const { data } = await supabase.from('orders').select('items').eq('id', id).single();
+    if (data && Array.isArray(data.items)) {
+      const items = [...data.items];
+      if (items[idx]) {
+        items[idx].packed = !items[idx].packed;
+        await supabase.from('orders').update({ items }).eq('id', id);
+      }
+    }
   }
 };
