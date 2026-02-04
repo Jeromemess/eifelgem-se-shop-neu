@@ -316,11 +316,11 @@ const Admin: React.FC = () => {
             <div className="pt-10 border-t-4 border-red-500/10 mt-10">
               <div className="bg-red-50/30 p-8 rounded-[2.5rem] border border-red-100">
                 <p className="text-[10px] font-black uppercase text-red-500 mb-6 tracking-widest flex items-center justify-center gap-2">
-                  <AlertTriangle className="w-4 h-4" /> Gefahrenbereich: Neue Woche
+                  <AlertTriangle className="w-4 h-4" /> Neue Woche: Alle Bestellungen löschen
                 </p>
                 {showResetConfirm ? (
                   <div className="bg-white p-6 rounded-3xl border-2 border-red-200 animate-in zoom-in-95 shadow-xl">
-                    <p className="text-[11px] font-black text-red-800 mb-4 uppercase tracking-tighter">Bist du sicher? Alle Bestellungen werden unwiderruflich gelöscht!</p>
+                    <p className="text-[11px] font-black text-red-800 mb-4 uppercase tracking-tighter">Bist du sicher? Alle Kundendaten dieser Woche werden entfernt!</p>
                     <div className="flex gap-2">
                       <button onClick={() => setShowResetConfirm(false)} className="flex-1 py-4 bg-gray-50 border border-gray-200 rounded-xl font-black text-[9px] uppercase">Abbruch</button>
                       <button onClick={handleResetOrders} className="flex-1 py-4 bg-red-600 text-white rounded-xl font-black text-[9px] uppercase shadow-lg shadow-red-200">Ja, Liste leeren</button>
@@ -328,10 +328,10 @@ const Admin: React.FC = () => {
                   </div>
                 ) : (
                   <button onClick={() => setShowResetConfirm(true)} className="w-full bg-white border-2 border-red-200 text-red-600 hover:bg-red-600 hover:text-white py-5 rounded-2xl font-black uppercase tracking-widest text-[9px] flex items-center justify-center gap-3 transition-all">
-                    <Trash2 className="w-4 h-4" /> Alle wöchentlichen Bestellungen löschen
+                    <Trash2 className="w-4 h-4" /> Wöchentliche Bestellungen löschen
                   </button>
                 )}
-                <p className="mt-4 text-[8px] font-bold text-gray-400 uppercase tracking-widest">Leert die Kundenliste für den neuen Ernte-Zyklus.</p>
+                <p className="mt-4 text-[8px] font-bold text-gray-400 uppercase tracking-widest">Die Bestände am Feld bleiben erhalten, nur die Bestellungen werden gelöscht.</p>
               </div>
             </div>
           </div>
