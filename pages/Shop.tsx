@@ -127,7 +127,7 @@ const Shop: React.FC = () => {
           <div className="w-20 h-20 bg-[#1a4d2e]/10 text-[#1a4d2e] rounded-[1.5rem] flex items-center justify-center mx-auto mb-8"><Calendar className="w-10 h-10" /></div>
           <h2 className="text-3xl font-black mb-4 uppercase tracking-tighter text-[#1a1a1a]">Wir ernten gerade!</h2>
           <p className="text-gray-500 font-bold mb-8 text-sm leading-relaxed">
-            Jerome und die Gang bereiten gerade alles vor. <br/>
+            Jérôme und die Gang bereiten gerade alles vor. <br/>
             Ab <strong>{shopStatus.nextOpen}</strong> kannst du wieder zuschlagen!
           </p>
           <div className="pt-8 border-t border-gray-100 text-[10px] font-black uppercase tracking-widest text-[#1a4d2e]">Eifelgemüse - Direkt vom Feld</div>
@@ -148,7 +148,7 @@ const Shop: React.FC = () => {
           </p>
           <div className="inline-flex items-center gap-2 bg-[#f5f2e8] px-4 py-2 rounded-full border border-[#1a4d2e]/10">
             <Sparkles className="w-3 h-3 text-[#1a4d2e]" />
-            <span className="text-[8px] font-black uppercase tracking-widest text-[#1a4d2e]">Jerome hat heute Morgen schon gegossen!</span>
+            <span className="text-[8px] font-black uppercase tracking-widest text-[#1a4d2e]">Jérôme hat heute Morgen schon gegossen!</span>
           </div>
         </div>
       </div>
@@ -188,7 +188,7 @@ const Shop: React.FC = () => {
               <div className="flex justify-between items-start mb-10">
                 <div>
                   <h3 className="text-3xl font-black text-[#121a14] tracking-tighter uppercase leading-none">Wer kriegt die Beute?</h3>
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-2">Jerome steht schon bereit!</p>
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-2">Jérôme steht schon bereit!</p>
                 </div>
                 <button onClick={() => setIsCheckoutOpen(false)} className="p-2 hover:bg-gray-100 rounded-full"><X className="w-8 h-8 text-gray-400" /></button>
               </div>
@@ -219,7 +219,7 @@ const Shop: React.FC = () => {
                 </div>
                 <div className="flex justify-between items-baseline pt-8 border-t border-[#f2ede1]">
                   <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Gesamtwert</span>
-                  <span className="text-6xl font-black text-[#121a14] tabular-nums tracking-tighter">{cartTotal.toFixed(2)}<span className="text-2xl ml-1 text-[#1a4d2e]">€</span></span>
+                  <span className="text-5xl font-black text-[#121a14] tabular-nums tracking-tighter">{cartTotal.toFixed(2)}<span className="text-2xl ml-1 text-[#1a4d2e]">€</span></span>
                 </div>
               </div>
 
@@ -243,7 +243,7 @@ const Shop: React.FC = () => {
                     </button>
                     <p className="text-[10px] font-black text-[#1a4d2e] uppercase tracking-widest mb-1">Moin Moin,</p>
                     <p className="text-3xl font-black text-black uppercase tracking-tight mb-2">{currentUser.firstName} {currentUser.lastName}!</p>
-                    <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">Jerome freut sich schon auf dich.</p>
+                    <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">Jérôme freut sich schon auf dich.</p>
                   </div>
                 )}
                 <button type="submit" disabled={isSubmitting} className="w-full bg-[#1a4d2e] text-white py-10 rounded-[2.5rem] font-black text-base uppercase tracking-widest shadow-xl flex items-center justify-center gap-3 transition-all hover:bg-black active:scale-95">
