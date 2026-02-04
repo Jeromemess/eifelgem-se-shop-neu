@@ -139,6 +139,12 @@ export const ApiService = {
     return (data || []).map(mapOrder);
   },
 
+  async clearAllOrders() {
+    if (!supabase) return;
+    const { error } = await supabase.from('orders').delete().neq('id', '00000000-0000-0000-0000-000000000000'); // Löscht alles
+    if (error) throw error;
+  },
+
   async submitOrder(customer: Customer, items: OrderItem[], total: number, week: string) {
     if (!supabase) throw new Error("Keine Verbindung");
     const settings = await this.getSettings();
