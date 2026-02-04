@@ -1,0 +1,64 @@
+
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Eifelgemüse - Kleines Grün. Große Wirkung.</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+      :root {
+        --eifel-green: #1a4d2e;
+        --eifel-sage: #88a270;
+        --eifel-beige: #fdfaf3;
+        --eifel-clay: #f2ede1;
+        --eifel-black: #121a14;
+      }
+      body {
+        font-family: 'Inter', sans-serif;
+        background-color: var(--eifel-beige);
+        color: var(--eifel-black);
+        -webkit-font-smoothing: antialiased;
+        overflow-x: hidden;
+      }
+      .bg-eifel-green { background-color: var(--eifel-green); }
+      .text-eifel-green { color: var(--eifel-green); }
+      .border-eifel-green { border-color: var(--eifel-green); }
+      
+      .transition-all { transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+      
+      ::-webkit-scrollbar { width: 10px; }
+      ::-webkit-scrollbar-track { background: var(--eifel-beige); }
+      ::-webkit-scrollbar-thumb { background: #dcd7c5; border-radius: 20px; border: 3px solid var(--eifel-beige); }
+      ::-webkit-scrollbar-thumb:hover { background: var(--eifel-green); }
+
+      .modern-shadow {
+        box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.05), 0 20px 50px -10px rgba(26, 77, 46, 0.05);
+      }
+      
+      input::placeholder {
+        color: #d1d5db;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.554.0",
+    "react-router-dom": "https://aistudiocdn.com/react-router-dom@^7.9.6",
+    "@supabase/supabase-js": "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body>
+    <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+</html>
