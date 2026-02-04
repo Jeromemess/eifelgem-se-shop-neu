@@ -89,8 +89,8 @@ const Success: React.FC = () => {
               <UserCheck className="w-6 h-6" />
             </div>
             <div>
-              <p className="text-[10px] font-black uppercase tracking-widest text-[#1a4d2e]">Vor Ort</p>
-              <p className="text-xs font-bold text-gray-600">Wir packen dir alles zusammen. <br/>Zahlung ganz entspannt in Bar.</p>
+              <p className="text-[10px] font-black uppercase tracking-widest text-[#1a4d2e]">Bestätigung</p>
+              <p className="text-xs font-bold text-gray-600">Wir packen dir alles zusammen. <br/>Zahlung bar bei Abholung.</p>
             </div>
           </div>
 
@@ -100,9 +100,10 @@ const Success: React.FC = () => {
                 <span className="text-2xl font-black text-black uppercase tracking-tighter">{order.customerName}</span>
             </div>
 
+            {/* NEU HINZUGEFÜGT */}
             <div className="space-y-4">
               <h4 className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-[#1a4d2e]">
-                <PlusCircle className="w-4 h-4" /> Gerade hinzugefügt
+                <PlusCircle className="w-4 h-4" /> In dieser Runde hinzugefügt:
               </h4>
               <ul className="space-y-3">
                 {newlyAdded.map((item, idx) => (
@@ -117,10 +118,11 @@ const Success: React.FC = () => {
               </ul>
             </div>
 
+            {/* BEREITS RESERVIERT */}
             {isFollowUpOrder && (
               <div className="space-y-4 pt-4 border-t border-dashed border-gray-100 opacity-60">
                 <h4 className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-gray-400">
-                  <History className="w-4 h-4" /> Bereits reserviert:
+                  <History className="w-4 h-4" /> War schon in deiner Kiste:
                 </h4>
                 <ul className="space-y-2">
                   {previousItems.map((item, idx) => (
@@ -133,9 +135,10 @@ const Success: React.FC = () => {
               </div>
             )}
 
-            <div className="pt-8 flex flex-col items-center border-t border-[#f5f2e8] mt-8">
-              <span className="font-black text-gray-400 uppercase tracking-widest text-[9px] mb-2">Gesamtbetrag am Hof</span>
+            <div className="pt-8 flex flex-col items-center border-t border-[#f5f2e8] mt-8 bg-gray-50 rounded-[2rem] p-6">
+              <span className="font-black text-gray-400 uppercase tracking-widest text-[9px] mb-2">Gesamtbetrag (Bisher + Neu)</span>
               <span className="font-black text-5xl text-[#1a4d2e] tracking-tighter">{order.totalAmount.toFixed(2)} €</span>
+              <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest mt-4 italic">Bitte bring den Betrag passend in bar mit.</p>
             </div>
           </div>
 
