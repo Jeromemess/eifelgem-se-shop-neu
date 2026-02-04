@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { useLocation, Link, useNavigate } from 'react-router-dom';
 import { Order, OrderItem } from '../types';
 import { ApiService } from '../services/api';
-import { CheckCircle, ArrowLeft, Calendar, Sprout, PlusCircle, UserCheck } from 'lucide-react';
+import { CheckCircle, ArrowLeft, Calendar, Sprout, PlusCircle, UserCheck, History } from 'lucide-react';
 
 const Success: React.FC = () => {
   const location = useLocation();
@@ -13,18 +13,14 @@ const Success: React.FC = () => {
   
   const [pickupInfo, setPickupInfo] = useState<{dateStr: string, time: string, day: string} | null>(null);
 
-  // Witzige Sprüche für die Bestätigung
   const funQuotes = [
     "Jérôme hat die Gummistiefel schon an und flitzt im Tiefflug zum Acker!",
     "Deine Wünsche sind tief im Boden versenkt!",
     "Das Gemüse freut sich schon riesig auf dein Zuhause!",
-    "Die Karotten wurden gerade nochmal extra gestreichelt.",
-    "Die Würmer im Acker weinen, weil du so viel tolles Zeug mitnimmst.",
     "Wir schärfen schon mal die Harke für deine nächste Ladung.",
     "Deine Kiste ist so schwer, wir machen dafür extra Liegestütze."
   ];
   
-  // Der Gummistiefel-Spruch bleibt wie gewünscht als Primär-Slogan
   const [quote] = useState(() => funQuotes[0]);
 
   useEffect(() => {
@@ -48,6 +44,7 @@ const Success: React.FC = () => {
   if (!order) return null;
 
   const newlyAdded = newItemsFromState || [];
+  // Wir filtern die Items, die NICHT in dieser Runde neu dazu kamen
   const previousItems = order.items.map(item => {
     const newly = newlyAdded.find(n => n.productId === item.productId);
     if (newly) {
@@ -79,12 +76,12 @@ const Success: React.FC = () => {
           {pickupInfo && (
             <div className="bg-[#fdfaf3] border border-[#f5f2e8] rounded-[2rem] p-6 mb-10 text-center relative group">
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-white px-4 py-1 rounded-full border border-[#f5f2e8] text-[8px] font-black uppercase tracking-widest text-gray-400">
-                  Wichtig
+                  Termin
                 </div>
                 <Calendar className="w-8 h-8 text-[#1a4d2e] mx-auto mb-4" />
                 <p className="text-gray-400 text-[9px] uppercase font-black tracking-widest mb-2">Deine Abholung</p>
-                <p className="text-2xl font-black text-[#1a4d2e] tracking-tight leading-tight">{pickupInfo.day}<br className="sm:hidden" /> {pickupInfo.dateStr}</p>
-                <p className="text-gray-900 font-bold mt-2 text-sm sm:text-xl">ab {pickupInfo.time} Uhr am Hof</p>
+                <p className="text-2xl font-black text-[#1a4d2e] tracking-tight">{pickupInfo.day}, {pickupInfo.dateStr}</p>
+                <p className="text-gray-900 font-bold mt-2 text-xl">ab {pickupInfo.time} Uhr am Hof</p>
             </div>
           )}
 
@@ -104,9 +101,10 @@ const Success: React.FC = () => {
                 <span className="text-2xl font-black text-black uppercase tracking-tighter">{order.customerName}</span>
             </div>
 
+            {/* NEUE POSTEN */}
             <div className="space-y-4">
               <h4 className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-[#1a4d2e]">
-                <PlusCircle className="w-4 h-4" /> {isFollowUpOrder ? 'Gerade hinzugefügt' : 'Deine Beute'}
+                <PlusCircle className="w-4 h-4" /> Gerade hinzugefügt
               </h4>
               <ul className="space-y-3">
                 {newlyAdded.map((item, idx) => (
@@ -121,8 +119,25 @@ const Success: React.FC = () => {
               </ul>
             </div>
 
+            {/* ALTE POSTEN AUS DER WOCHE */}
+            {isFollowUpOrder && (
+              <div className="space-y-4 pt-4 border-t border-dashed border-gray-100 opacity-60">
+                <h4 className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-gray-400">
+                  <History className="w-4 h-4" /> Bereits reserviert:
+                </h4>
+                <ul className="space-y-2">
+                  {previousItems.map((item, idx) => (
+                    <li key={idx} className="flex justify-between items-center text-sm font-bold text-gray-400">
+                      <span>{item.quantity}x {item.productName}</span>
+                      <span>{(item.priceAtOrder * item.quantity).toFixed(2)} €</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
             <div className="pt-8 flex flex-col items-center border-t border-[#f5f2e8] mt-8">
-              <span className="font-black text-gray-400 uppercase tracking-widest text-[9px] mb-2">Gesamtpreis (Bar bei Abholung)</span>
+              <span className="font-black text-gray-400 uppercase tracking-widest text-[9px] mb-2">Gesamtbetrag (Bar bei Abholung)</span>
               <span className="font-black text-5xl text-[#1a4d2e] tracking-tighter">{order.totalAmount.toFixed(2)} €</span>
             </div>
           </div>
