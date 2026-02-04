@@ -139,7 +139,7 @@ const Admin: React.FC = () => {
 
   if (!isAuthenticated) return (
     <div className="min-h-[80vh] flex items-center justify-center px-4 overflow-hidden">
-      <form onSubmit={handleLogin} className="bg-white p-8 rounded-[2.5rem] shadow-2xl w-full max-w-sm text-center">
+      <form onSubmit={handleLogin} className="bg-white p-8 rounded-[2.5rem] shadow-2xl w-full max-sm:px-6 w-full max-w-sm text-center">
         <div className="w-16 h-16 bg-[#1a4d2e] text-white rounded-[1.2rem] flex items-center justify-center mx-auto mb-6 shadow-xl"><Lock className="w-8 h-8" /></div>
         <h2 className="text-2xl font-black mb-6 uppercase tracking-tighter text-black">Hof-Login</h2>
         <input type="password" value={pin} onChange={e => setPin(e.target.value)} className="w-full p-4 bg-[#fdfbf7] border-2 border-[#f5f2e8] rounded-2xl mb-6 text-center text-3xl outline-none font-black text-black" placeholder="PIN" />
@@ -313,22 +313,26 @@ const Admin: React.FC = () => {
             
             <button onClick={async () => { await ApiService.saveSettings(settings); setSaveSuccess(true); setTimeout(() => setSaveSuccess(false), 2000); }} className="w-full bg-[#1a4d2e] text-white py-6 rounded-2xl font-black uppercase text-xs shadow-lg">{saveSuccess ? 'Gespeichert!' : 'Einstellungen speichern'}</button>
 
-            <div className="pt-10 border-t border-gray-100 mt-10">
-              <p className="text-[10px] font-black uppercase text-red-500 mb-6">Gefahrenbereich</p>
-              {showResetConfirm ? (
-                <div className="bg-red-50 p-6 rounded-3xl border-2 border-red-200 animate-in zoom-in-95">
-                  <AlertTriangle className="w-8 h-8 text-red-600 mx-auto mb-3" />
-                  <p className="text-xs font-bold text-red-800 mb-4">Möchtest du wirklich ALLE Bestellungen dieser Woche löschen?</p>
-                  <div className="flex gap-2">
-                    <button onClick={() => setShowResetConfirm(false)} className="flex-1 py-3 bg-white border border-red-200 rounded-xl font-black text-[9px] uppercase">Abbruch</button>
-                    <button onClick={handleResetOrders} className="flex-1 py-3 bg-red-600 text-white rounded-xl font-black text-[9px] uppercase">Ja, Löschen</button>
+            <div className="pt-10 border-t-4 border-red-500/10 mt-10">
+              <div className="bg-red-50/30 p-8 rounded-[2.5rem] border border-red-100">
+                <p className="text-[10px] font-black uppercase text-red-500 mb-6 tracking-widest flex items-center justify-center gap-2">
+                  <AlertTriangle className="w-4 h-4" /> Gefahrenbereich: Neue Woche
+                </p>
+                {showResetConfirm ? (
+                  <div className="bg-white p-6 rounded-3xl border-2 border-red-200 animate-in zoom-in-95 shadow-xl">
+                    <p className="text-[11px] font-black text-red-800 mb-4 uppercase tracking-tighter">Bist du sicher? Alle Bestellungen werden unwiderruflich gelöscht!</p>
+                    <div className="flex gap-2">
+                      <button onClick={() => setShowResetConfirm(false)} className="flex-1 py-4 bg-gray-50 border border-gray-200 rounded-xl font-black text-[9px] uppercase">Abbruch</button>
+                      <button onClick={handleResetOrders} className="flex-1 py-4 bg-red-600 text-white rounded-xl font-black text-[9px] uppercase shadow-lg shadow-red-200">Ja, Liste leeren</button>
+                    </div>
                   </div>
-                </div>
-              ) : (
-                <button onClick={() => setShowResetConfirm(true)} className="w-full bg-white border-2 border-red-100 text-red-500 hover:bg-red-50 py-4 rounded-2xl font-black uppercase tracking-widest text-[9px] flex items-center justify-center gap-2">
-                  <Trash2 className="w-4 h-4" /> Bestellungen für neue Woche zurücksetzen
-                </button>
-              )}
+                ) : (
+                  <button onClick={() => setShowResetConfirm(true)} className="w-full bg-white border-2 border-red-200 text-red-600 hover:bg-red-600 hover:text-white py-5 rounded-2xl font-black uppercase tracking-widest text-[9px] flex items-center justify-center gap-3 transition-all">
+                    <Trash2 className="w-4 h-4" /> Alle wöchentlichen Bestellungen löschen
+                  </button>
+                )}
+                <p className="mt-4 text-[8px] font-bold text-gray-400 uppercase tracking-widest">Leert die Kundenliste für den neuen Ernte-Zyklus.</p>
+              </div>
             </div>
           </div>
         )}
