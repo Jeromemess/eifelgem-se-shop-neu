@@ -175,32 +175,35 @@ const Shop: React.FC = () => {
             <div className="p-8 sm:p-14 max-h-[90vh] overflow-y-auto no-scrollbar">
               <div className="flex justify-between items-start mb-10">
                 <div>
-                  <h3 className="text-3xl font-black text-[#121a14] tracking-tighter uppercase leading-none">Ab in die Kiste?</h3>
+                  <h3 className="text-3xl font-black text-[#121a14] tracking-tighter uppercase leading-none">Alles bereit?</h3>
                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-2">Frisch vom Feld direkt zu dir.</p>
                 </div>
                 <button onClick={() => setIsCheckoutOpen(false)} className="p-2 hover:bg-gray-100 rounded-full"><X className="w-8 h-8 text-gray-400" /></button>
               </div>
 
               <div className="space-y-6 mb-12">
-                {/* BEREITS GEKAUFT */}
+                {/* BEREITS GEKAUFT SECTION */}
                 {previousOrder && (
-                  <div className="bg-gray-50 border border-gray-100 rounded-[2rem] p-6 opacity-70">
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                      <History className="w-4 h-4" /> Schon in deiner Kiste:
+                  <div className="bg-gray-50 border border-gray-100 rounded-[2.5rem] p-8 border-dashed">
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-6 flex items-center gap-2">
+                      <History className="w-4 h-4" /> Bereits in deiner Kiste:
                     </p>
-                    <div className="space-y-3">
+                    <div className="space-y-4">
                       {previousOrder.items.map((item, idx) => (
-                        <div key={idx} className="flex justify-between items-center text-sm font-bold text-gray-500">
-                          <span>{item.quantity}x {item.productName}</span>
-                          <span>{(item.priceAtOrder * item.quantity).toFixed(2)} €</span>
+                        <div key={idx} className="flex justify-between items-center text-sm font-bold text-gray-400">
+                          <span className="flex items-center gap-2">
+                             <div className="w-1.5 h-1.5 bg-gray-300 rounded-full"></div>
+                             {item.quantity}x {item.productName}
+                          </span>
+                          <span className="tabular-nums">{(item.priceAtOrder * item.quantity).toFixed(2)} €</span>
                         </div>
                       ))}
                     </div>
                   </div>
                 )}
 
-                {/* NEU HINZUGEFÜGT */}
-                <div className="bg-[#fdfaf3] rounded-[2.5rem] p-6 sm:p-10 border border-[#f5f2e8]">
+                {/* NEU HINZUGEFÜGT SECTION */}
+                <div className="bg-[#fdfaf3] rounded-[2.5rem] p-8 sm:p-10 border border-[#f5f2e8] shadow-sm">
                   <p className="text-[10px] font-black text-[#1a4d2e] uppercase tracking-widest mb-8 flex items-center gap-2">
                     <ShoppingCart className="w-4 h-4" /> Gerade hinzugefügt:
                   </p>
@@ -214,10 +217,10 @@ const Shop: React.FC = () => {
                       return (
                         <div key={id} className="flex justify-between items-center text-xl sm:text-2xl font-black text-[#121a14] tracking-tight">
                           <span className="flex items-center gap-4">
-                            <span className="text-[#1a4d2e] bg-[#1a4d2e]/10 px-3 py-1 rounded-xl text-sm">{physicalQty}x</span>
+                            <span className="text-[#1a4d2e] bg-[#1a4d2e]/10 px-3 py-1 rounded-xl text-xs">{physicalQty}x</span>
                             {p.name}
                           </span>
-                          <span className="text-gray-400 font-bold text-base">{lineTotal.toFixed(2)} €</span>
+                          <span className="text-gray-400 font-bold text-base tabular-nums">{lineTotal.toFixed(2)} €</span>
                         </div>
                       );
                     })}
@@ -227,8 +230,11 @@ const Shop: React.FC = () => {
                     <span className="text-5xl font-black text-[#121a14] tabular-nums tracking-tighter">{cartTotal.toFixed(2)}<span className="text-2xl ml-1 text-[#1a4d2e]">€</span></span>
                   </div>
                   {previousOrder && (
-                    <div className="mt-4 pt-4 border-t border-dashed border-gray-200 text-right">
-                       <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Gesamtbetrag am Hof: <span className="text-black text-xs">{(previousOrder.totalAmount + cartTotal).toFixed(2)} €</span></p>
+                    <div className="mt-6 pt-6 border-t border-dashed border-gray-200">
+                       <div className="flex justify-between items-center">
+                         <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Gesamtwert dieser Woche:</span>
+                         <span className="text-xl font-black text-black tabular-nums">{(previousOrder.totalAmount + cartTotal).toFixed(2)} €</span>
+                       </div>
                     </div>
                   )}
                 </div>
@@ -245,11 +251,16 @@ const Shop: React.FC = () => {
                     <button type="button" onClick={handleSwitchUser} className="absolute top-6 right-6 p-2 text-[#1a4d2e] hover:text-black transition-colors"><UserPlus className="w-6 h-6" /></button>
                     <p className="text-[10px] font-black text-[#1a4d2e] uppercase tracking-widest mb-1">Moin Moin,</p>
                     <p className="text-3xl font-black text-black uppercase tracking-tight mb-2">{currentUser.firstName} {currentUser.lastName}!</p>
-                    <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">Wir freuen uns auf deinen Besuch!</p>
+                    <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">Schön, dass du wieder da bist!</p>
                   </div>
                 )}
                 <button type="submit" disabled={isSubmitting} className="w-full bg-[#1a4d2e] text-white py-10 rounded-[2.5rem] font-black text-base uppercase tracking-widest shadow-xl flex items-center justify-center gap-3 transition-all hover:bg-black active:scale-95">
-                  {isSubmitting ? <Loader2 className="w-8 h-8 animate-spin" /> : <span className="flex items-center gap-2"><ShoppingBag className="w-5 h-5" /> Reservierung abschicken</span>}
+                  {isSubmitting ? <Loader2 className="w-8 h-8 animate-spin" /> : (
+                    <span className="flex items-center gap-2">
+                      <ShoppingBag className="w-5 h-5" /> 
+                      {previousOrder ? 'Zu meiner Ernte hinzufügen' : 'Bestellung abschicken!'}
+                    </span>
+                  )}
                 </button>
               </form>
             </div>
