@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
 import { ApiService, getWeekLabel } from '../services/api';
 import { Product, Customer, OrderItem } from '../types';
-import { Loader2, X, ArrowRight, Calendar, CheckSquare, UserPlus, Zap, Tag, ShoppingBag } from 'lucide-react';
+import { Loader2, X, ArrowRight, Calendar, CheckSquare, UserPlus, ShoppingBag, AlertCircle, Sparkles } from 'lucide-react';
 
 const Shop: React.FC = () => {
   const navigate = useNavigate();
@@ -25,6 +25,7 @@ const Shop: React.FC = () => {
   }, []);
 
   const loadData = async () => {
+    setIsLoading(true);
     try {
       const [user, data, status] = await Promise.all([
         ApiService.getCurrentUser(),
@@ -35,7 +36,7 @@ const Shop: React.FC = () => {
       setProducts(data.filter(p => p.isActive));
       setShopStatus(status);
     } catch (err) {
-      setError("Fehler beim Laden.");
+      setError("Verbindung zur Datenbank fehlgeschlagen. Bitte prüfe deine Supabase-Einstellungen.");
     } finally {
       setIsLoading(false);
     }
@@ -110,6 +111,15 @@ const Shop: React.FC = () => {
 
   if (isLoading) return <div className="min-h-[60vh] flex items-center justify-center"><Loader2 className="w-10 h-10 text-[#1a4d2e] animate-spin" /></div>;
 
+  if (error) return (
+    <div className="min-h-[60vh] flex flex-col items-center justify-center px-4 text-center">
+      <AlertCircle className="w-16 h-16 text-red-500 mb-4" />
+      <h2 className="text-2xl font-black mb-2">Hoppla!</h2>
+      <p className="text-gray-500 max-w-sm mb-6">{error}</p>
+      <button onClick={() => window.location.reload()} className="bg-[#1a4d2e] text-white px-8 py-3 rounded-full font-black uppercase text-xs">Nochmal versuchen</button>
+    </div>
+  );
+
   if (!shopStatus.isOpen) {
     return (
       <div className="min-h-[70vh] flex items-center justify-center px-4">
@@ -117,8 +127,8 @@ const Shop: React.FC = () => {
           <div className="w-20 h-20 bg-[#1a4d2e]/10 text-[#1a4d2e] rounded-[1.5rem] flex items-center justify-center mx-auto mb-8"><Calendar className="w-10 h-10" /></div>
           <h2 className="text-3xl font-black mb-4 uppercase tracking-tighter text-[#1a1a1a]">Wir ernten gerade!</h2>
           <p className="text-gray-500 font-bold mb-8 text-sm leading-relaxed">
-            Derzeit bereiten wir die aktuellen Bestellungen vor. <br/>
-            Ab <strong>{shopStatus.nextOpen}</strong> sind wieder neue Bestellungen möglich.
+            Jerome und die Gang bereiten gerade alles vor. <br/>
+            Ab <strong>{shopStatus.nextOpen}</strong> kannst du wieder zuschlagen!
           </p>
           <div className="pt-8 border-t border-gray-100 text-[10px] font-black uppercase tracking-widest text-[#1a4d2e]">Eifelgemüse - Direkt vom Feld</div>
         </div>
@@ -132,9 +142,15 @@ const Shop: React.FC = () => {
         <h2 className="text-4xl md:text-7xl font-[900] text-[#121a14] mb-6 tracking-tighter leading-[0.9]">
           Frisches Gemüse.<br/><span className="text-[#1a4d2e]">Direkt vom Feld.</span>
         </h2>
-        <p className="text-gray-400 max-w-md mx-auto font-black text-[10px] uppercase tracking-[0.4em] leading-relaxed">
-          Stöbere durch unsere Ernte und reserviere deine Auswahl
-        </p>
+        <div className="flex flex-col items-center gap-2">
+          <p className="text-gray-400 max-w-md mx-auto font-black text-[10px] uppercase tracking-[0.4em] leading-relaxed">
+            Stöbere durch unsere Ernte und reserviere deine Auswahl
+          </p>
+          <div className="inline-flex items-center gap-2 bg-[#f5f2e8] px-4 py-2 rounded-full border border-[#1a4d2e]/10">
+            <Sparkles className="w-3 h-3 text-[#1a4d2e]" />
+            <span className="text-[8px] font-black uppercase tracking-widest text-[#1a4d2e]">Jerome hat heute Morgen schon gegossen!</span>
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 sm:gap-10 mb-12">
@@ -146,6 +162,11 @@ const Shop: React.FC = () => {
             onUpdateQuantity={(qty) => handleUpdateQuantity(product.id, qty)}
           />
         ))}
+        {products.length === 0 && !isLoading && (
+          <div className="col-span-full py-20 text-center">
+             <p className="text-gray-400 font-black uppercase tracking-widest text-sm">Derzeit ist das Feld leergeerntet.</p>
+          </div>
+        )}
       </div>
 
       {cartCount > 0 && (
@@ -167,7 +188,7 @@ const Shop: React.FC = () => {
               <div className="flex justify-between items-start mb-10">
                 <div>
                   <h3 className="text-3xl font-black text-[#121a14] tracking-tighter uppercase leading-none">Wer kriegt die Beute?</h3>
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-2">Gleich wird gebuddelt...</p>
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-2">Jerome steht schon bereit!</p>
                 </div>
                 <button onClick={() => setIsCheckoutOpen(false)} className="p-2 hover:bg-gray-100 rounded-full"><X className="w-8 h-8 text-gray-400" /></button>
               </div>
@@ -211,7 +232,7 @@ const Shop: React.FC = () => {
                     </div>
                   </div>
                 ) : (
-                  <div className="bg-[#1a4d2e]/5 p-10 rounded-[2.5rem] border border-[#1a4d2e]/10 mb-8 relative group">
+                  <div className="bg-[#1a4d2e]/5 p-10 rounded-[2.5rem] border border-[#1a4d2e]/10 mb-8 relative group text-center">
                     <button 
                       type="button" 
                       onClick={handleSwitchUser} 
@@ -220,8 +241,9 @@ const Shop: React.FC = () => {
                     >
                       <UserPlus className="w-6 h-6" />
                     </button>
-                    <p className="text-[10px] font-black text-[#1a4d2e] uppercase tracking-widest mb-1 text-center">Reserviert für</p>
-                    <p className="text-3xl font-black text-black uppercase tracking-tight text-center">{currentUser.firstName} {currentUser.lastName}</p>
+                    <p className="text-[10px] font-black text-[#1a4d2e] uppercase tracking-widest mb-1">Moin Moin,</p>
+                    <p className="text-3xl font-black text-black uppercase tracking-tight mb-2">{currentUser.firstName} {currentUser.lastName}!</p>
+                    <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">Jerome freut sich schon auf dich.</p>
                   </div>
                 )}
                 <button type="submit" disabled={isSubmitting} className="w-full bg-[#1a4d2e] text-white py-10 rounded-[2.5rem] font-black text-base uppercase tracking-widest shadow-xl flex items-center justify-center gap-3 transition-all hover:bg-black active:scale-95">
