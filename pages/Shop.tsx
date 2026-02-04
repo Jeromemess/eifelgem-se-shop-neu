@@ -3,8 +3,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
 import { ApiService, getWeekLabel } from '../services/api';
-import { Product, Customer, OrderItem } from '../types';
-import { Loader2, X, ArrowRight, Calendar, CheckSquare, UserPlus, ShoppingBag, AlertCircle } from 'lucide-react';
+import { Product, Customer, OrderItem, Order } from '../types';
+import { Loader2, X, ArrowRight, Calendar, CheckSquare, UserPlus, ShoppingBag, AlertCircle, ShoppingCart, History } from 'lucide-react';
 
 const Shop: React.FC = () => {
   const navigate = useNavigate();
@@ -16,6 +16,7 @@ const Shop: React.FC = () => {
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [shopStatus, setShopStatus] = useState<{isOpen: boolean, nextOpen?: string}>({ isOpen: true });
+  const [previousOrder, setPreviousOrder] = useState<Order | null>(null);
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -27,16 +28,23 @@ const Shop: React.FC = () => {
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const [user, data, status] = await Promise.all([
+      const [user, data, status, settings] = await Promise.all([
         ApiService.getCurrentUser(),
         ApiService.getProducts(),
-        ApiService.isShopOpen()
+        ApiService.isShopOpen(),
+        ApiService.getSettings()
       ]);
       setCurrentUser(user);
       setProducts(data.filter(p => p.isActive));
       setShopStatus(status);
+
+      if (user) {
+        const week = settings.currentPickupDate ? getWeekLabel(new Date(settings.currentPickupDate)) : getWeekLabel(new Date());
+        const prev = await ApiService.getOrdersForUser(`${user.firstName} ${user.lastName}`, week);
+        setPreviousOrder(prev);
+      }
     } catch (err) {
-      setError("Verbindung zur Datenbank fehlgeschlagen. Bitte prüfe deine Supabase-Einstellungen.");
+      setError("Verbindung zur Datenbank fehlgeschlagen.");
     } finally {
       setIsLoading(false);
     }
@@ -70,6 +78,7 @@ const Shop: React.FC = () => {
 
   const handleSwitchUser = () => {
     setCurrentUser(null);
+    setPreviousOrder(null);
     setFirstName('');
     setLastName('');
   };
@@ -86,7 +95,7 @@ const Shop: React.FC = () => {
         setCurrentUser(user);
       }
       
-      const items: OrderItem[] = Object.entries(cart).map(([productId, quantity]) => {
+      const newItems: OrderItem[] = Object.entries(cart).map(([productId, quantity]) => {
         const p = products.find(prod => prod.id === productId);
         if (!p) throw new Error("Produkt nicht gefunden");
         const paidQty = quantity as number;
@@ -101,8 +110,8 @@ const Shop: React.FC = () => {
         };
       });
 
-      const order = await ApiService.submitOrder(user, items, cartTotal, getWeekLabel(new Date()));
-      navigate('/success', { state: { order, newItems: items } });
+      const order = await ApiService.submitOrder(user, newItems, cartTotal, getWeekLabel(new Date()));
+      navigate('/success', { state: { order, newItems: newItems } });
     } catch (err: any) {
       setError(err.message || 'Fehler beim Bestellen.');
       setIsSubmitting(false);
@@ -110,15 +119,6 @@ const Shop: React.FC = () => {
   };
 
   if (isLoading) return <div className="min-h-[60vh] flex items-center justify-center"><Loader2 className="w-10 h-10 text-[#1a4d2e] animate-spin" /></div>;
-
-  if (error) return (
-    <div className="min-h-[60vh] flex flex-col items-center justify-center px-4 text-center">
-      <AlertCircle className="w-16 h-16 text-red-500 mb-4" />
-      <h2 className="text-2xl font-black mb-2">Hoppla!</h2>
-      <p className="text-gray-500 max-w-sm mb-6">{error}</p>
-      <button onClick={() => window.location.reload()} className="bg-[#1a4d2e] text-white px-8 py-3 rounded-full font-black uppercase text-xs">Nochmal versuchen</button>
-    </div>
-  );
 
   if (!shopStatus.isOpen) {
     return (
@@ -130,7 +130,6 @@ const Shop: React.FC = () => {
             Wir bereiten gerade alles für die nächste Abholung vor. <br/>
             Ab <strong>{shopStatus.nextOpen}</strong> kannst du wieder zuschlagen!
           </p>
-          <div className="pt-8 border-t border-gray-100 text-[10px] font-black uppercase tracking-widest text-[#1a4d2e]">Eifelgemüse - Direkt vom Feld</div>
         </div>
       </div>
     );
@@ -142,11 +141,9 @@ const Shop: React.FC = () => {
         <h2 className="text-4xl md:text-7xl font-[900] text-[#121a14] mb-6 tracking-tighter leading-[0.9]">
           Frisches Gemüse.<br/><span className="text-[#1a4d2e]">Direkt vom Feld.</span>
         </h2>
-        <div className="flex flex-col items-center gap-2">
-          <p className="text-gray-400 max-w-md mx-auto font-black text-[10px] uppercase tracking-[0.4em] leading-relaxed">
-            Stöbere durch unsere Ernte und reserviere deine Auswahl
-          </p>
-        </div>
+        <p className="text-gray-400 max-w-md mx-auto font-black text-[10px] uppercase tracking-[0.4em] leading-relaxed">
+          Stöbere durch unsere Ernte und reserviere deine Auswahl
+        </p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 sm:gap-10 mb-12">
@@ -158,11 +155,6 @@ const Shop: React.FC = () => {
             onUpdateQuantity={(qty) => handleUpdateQuantity(product.id, qty)}
           />
         ))}
-        {products.length === 0 && !isLoading && (
-          <div className="col-span-full py-20 text-center">
-             <p className="text-gray-400 font-black uppercase tracking-widest text-sm">Derzeit ist das Feld leergeerntet.</p>
-          </div>
-        )}
       </div>
 
       {cartCount > 0 && (
@@ -183,75 +175,83 @@ const Shop: React.FC = () => {
             <div className="p-8 sm:p-14 max-h-[90vh] overflow-y-auto no-scrollbar">
               <div className="flex justify-between items-start mb-10">
                 <div>
-                  <h3 className="text-3xl font-black text-[#121a14] tracking-tighter uppercase leading-none">Wer kriegt die Beute?</h3>
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-2">Frisch vom Feld in deine Kiste.</p>
+                  <h3 className="text-3xl font-black text-[#121a14] tracking-tighter uppercase leading-none">Ab in die Kiste?</h3>
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-2">Frisch vom Feld direkt zu dir.</p>
                 </div>
                 <button onClick={() => setIsCheckoutOpen(false)} className="p-2 hover:bg-gray-100 rounded-full"><X className="w-8 h-8 text-gray-400" /></button>
               </div>
 
-              <div className="bg-[#fdfaf3] rounded-[2.5rem] p-6 sm:p-10 border border-[#f5f2e8] mb-12">
-                <p className="text-[10px] font-black text-[#1a4d2e] uppercase tracking-widest mb-8 flex items-center gap-2">
-                  <CheckSquare className="w-4 h-4" /> Deine Ausbeute:
-                </p>
-                <div className="space-y-8 mb-10">
-                  {Object.entries(cart).map(([id, qty]) => {
-                    const p = products.find(prod => prod.id === id);
-                    if (!p) return null;
-                    const paidQty = qty as number;
-                    const physicalQty = p.isBogo ? paidQty * 2 : paidQty;
-                    const lineTotal = calculateTotalToPay(p, paidQty);
-                    return (
-                      <div key={id} className="flex flex-col gap-1.5">
-                        <div className="flex justify-between items-center text-xl sm:text-2xl font-black text-[#121a14] tracking-tight">
+              <div className="space-y-6 mb-12">
+                {/* BEREITS GEKAUFT */}
+                {previousOrder && (
+                  <div className="bg-gray-50 border border-gray-100 rounded-[2rem] p-6 opacity-70">
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                      <History className="w-4 h-4" /> Schon in deiner Kiste:
+                    </p>
+                    <div className="space-y-3">
+                      {previousOrder.items.map((item, idx) => (
+                        <div key={idx} className="flex justify-between items-center text-sm font-bold text-gray-500">
+                          <span>{item.quantity}x {item.productName}</span>
+                          <span>{(item.priceAtOrder * item.quantity).toFixed(2)} €</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* NEU HINZUGEFÜGT */}
+                <div className="bg-[#fdfaf3] rounded-[2.5rem] p-6 sm:p-10 border border-[#f5f2e8]">
+                  <p className="text-[10px] font-black text-[#1a4d2e] uppercase tracking-widest mb-8 flex items-center gap-2">
+                    <ShoppingCart className="w-4 h-4" /> Gerade hinzugefügt:
+                  </p>
+                  <div className="space-y-8 mb-10">
+                    {Object.entries(cart).map(([id, qty]) => {
+                      const p = products.find(prod => prod.id === id);
+                      if (!p) return null;
+                      const paidQty = qty as number;
+                      const physicalQty = p.isBogo ? paidQty * 2 : paidQty;
+                      const lineTotal = calculateTotalToPay(p, paidQty);
+                      return (
+                        <div key={id} className="flex justify-between items-center text-xl sm:text-2xl font-black text-[#121a14] tracking-tight">
                           <span className="flex items-center gap-4">
                             <span className="text-[#1a4d2e] bg-[#1a4d2e]/10 px-3 py-1 rounded-xl text-sm">{physicalQty}x</span>
                             {p.name}
                           </span>
                           <span className="text-gray-400 font-bold text-base">{lineTotal.toFixed(2)} €</span>
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
-                <div className="flex justify-between items-baseline pt-8 border-t border-[#f2ede1]">
-                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Gesamtwert</span>
-                  <span className="text-5xl font-black text-[#121a14] tabular-nums tracking-tighter">{cartTotal.toFixed(2)}<span className="text-2xl ml-1 text-[#1a4d2e]">€</span></span>
+                      );
+                    })}
+                  </div>
+                  <div className="flex justify-between items-baseline pt-8 border-t border-[#f2ede1]">
+                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Zusätzlicher Betrag</span>
+                    <span className="text-5xl font-black text-[#121a14] tabular-nums tracking-tighter">{cartTotal.toFixed(2)}<span className="text-2xl ml-1 text-[#1a4d2e]">€</span></span>
+                  </div>
+                  {previousOrder && (
+                    <div className="mt-4 pt-4 border-t border-dashed border-gray-200 text-right">
+                       <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Gesamtbetrag am Hof: <span className="text-black text-xs">{(previousOrder.totalAmount + cartTotal).toFixed(2)} €</span></p>
+                    </div>
+                  )}
                 </div>
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-8">
                 {!currentUser ? (
-                  <div className="grid grid-cols-1 gap-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <input type="text" value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="VORNAME" className="w-full p-6 bg-[#fdfaf3] rounded-3xl border-2 border-transparent focus:border-[#1a4d2e] outline-none font-black text-sm uppercase tracking-widest shadow-sm" required />
-                      <input type="text" value={lastName} onChange={e => setLastName(e.target.value)} placeholder="NACHNAME" className="w-full p-6 bg-[#fdfaf3] rounded-3xl border-2 border-transparent focus:border-[#1a4d2e] outline-none font-black text-sm uppercase tracking-widest shadow-sm" required />
-                    </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <input type="text" value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="VORNAME" className="w-full p-6 bg-[#fdfaf3] rounded-3xl border-2 border-transparent focus:border-[#1a4d2e] outline-none font-black text-sm uppercase" required />
+                    <input type="text" value={lastName} onChange={e => setLastName(e.target.value)} placeholder="NACHNAME" className="w-full p-6 bg-[#fdfaf3] rounded-3xl border-2 border-transparent focus:border-[#1a4d2e] outline-none font-black text-sm uppercase" required />
                   </div>
                 ) : (
-                  <div className="bg-[#1a4d2e]/5 p-10 rounded-[2.5rem] border border-[#1a4d2e]/10 mb-8 relative group text-center">
-                    <button 
-                      type="button" 
-                      onClick={handleSwitchUser} 
-                      className="absolute top-6 right-6 p-2 text-[#1a4d2e] hover:text-black transition-colors"
-                      title="Anderer Name?"
-                    >
-                      <UserPlus className="w-6 h-6" />
-                    </button>
+                  <div className="bg-[#1a4d2e]/5 p-10 rounded-[2.5rem] border border-[#1a4d2e]/10 text-center relative">
+                    <button type="button" onClick={handleSwitchUser} className="absolute top-6 right-6 p-2 text-[#1a4d2e] hover:text-black transition-colors"><UserPlus className="w-6 h-6" /></button>
                     <p className="text-[10px] font-black text-[#1a4d2e] uppercase tracking-widest mb-1">Moin Moin,</p>
                     <p className="text-3xl font-black text-black uppercase tracking-tight mb-2">{currentUser.firstName} {currentUser.lastName}!</p>
                     <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">Wir freuen uns auf deinen Besuch!</p>
                   </div>
                 )}
                 <button type="submit" disabled={isSubmitting} className="w-full bg-[#1a4d2e] text-white py-10 rounded-[2.5rem] font-black text-base uppercase tracking-widest shadow-xl flex items-center justify-center gap-3 transition-all hover:bg-black active:scale-95">
-                  {isSubmitting ? <Loader2 className="w-8 h-8 animate-spin" /> : (
-                    <span className="flex items-center gap-2">
-                      <ShoppingBag className="w-5 h-5" />
-                      Bestellung abschicken!
-                    </span>
-                  )}
+                  {isSubmitting ? <Loader2 className="w-8 h-8 animate-spin" /> : <span className="flex items-center gap-2"><ShoppingBag className="w-5 h-5" /> Reservierung abschicken</span>}
                 </button>
               </form>
-              <p className="text-center text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-10">Zahlung erfolgt bar bei Abholung am Hof.</p>
             </div>
           </div>
         </div>
