@@ -132,21 +132,6 @@ const Shop: React.FC = () => {
 
   if (isLoading) return <div className="min-h-[60vh] flex items-center justify-center"><Loader2 className="w-10 h-10 text-[#1a4d2e] animate-spin" /></div>;
 
-  if (!shopStatus.isOpen) {
-    return (
-      <div className="min-h-[70vh] flex items-center justify-center px-4">
-        <div className="max-w-md w-full bg-white p-12 rounded-[3.5rem] shadow-2xl text-center border border-[#f5f2e8]">
-          <div className="w-20 h-20 bg-[#1a4d2e]/10 text-[#1a4d2e] rounded-[1.5rem] flex items-center justify-center mx-auto mb-8"><Calendar className="w-10 h-10" /></div>
-          <h2 className="text-3xl font-black mb-4 uppercase tracking-tighter text-[#1a1a1a]">Wir ernten gerade!</h2>
-          <p className="text-gray-500 font-bold mb-8 text-sm leading-relaxed">
-            Wir bereiten gerade alles für die nächste Abholung vor. <br/>
-            Ab <strong>{shopStatus.nextOpen}</strong> kannst du wieder zuschlagen!
-          </p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="pb-40 max-w-5xl mx-auto px-4 sm:px-6 py-12">
       <div className="text-center mb-16 sm:mb-24 mt-8">
@@ -202,7 +187,6 @@ const Shop: React.FC = () => {
               </div>
 
               <div className="space-y-6 mb-10">
-                {/* BEREITS BESTELLT - ÜBERSICHTLICH GESTERN STIL */}
                 {previousOrder && (
                   <div className="bg-gray-50 border-2 border-dashed border-gray-200 rounded-[2.5rem] p-8">
                     <div className="flex items-center justify-between mb-6">
@@ -226,7 +210,6 @@ const Shop: React.FC = () => {
                   </div>
                 )}
 
-                {/* NEU HINZUGEFÜGT */}
                 <div className="bg-[#fdfaf3] rounded-[2.5rem] p-8 sm:p-10 border-2 border-[#1a4d2e]/10 shadow-sm">
                   <p className="text-[10px] font-black text-[#1a4d2e] uppercase tracking-widest mb-8 flex items-center gap-2">
                     <ShoppingCart className="w-4 h-4" /> Neu dazu:
@@ -259,7 +242,7 @@ const Shop: React.FC = () => {
                      <div className="flex justify-between items-end">
                         <div>
                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Gesamtbetrag am Hof</p>
-                           <p className="text-[9px] font-bold text-gray-400 italic">Bezahlung erfolgt bar bei Abholung</p>
+                           <p className="text-[9px] font-bold text-gray-400 italic">Zahlung erfolgt bar bei Abholung</p>
                         </div>
                         <span className="text-5xl font-black text-[#1a4d2e] tabular-nums tracking-tighter">
                           {( (previousOrder?.totalAmount || 0) + cartTotal).toFixed(2)}<span className="text-2xl ml-1">€</span>
