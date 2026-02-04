@@ -13,15 +13,17 @@ const Success: React.FC = () => {
   
   const [pickupInfo, setPickupInfo] = useState<{dateStr: string, time: string, day: string} | null>(null);
 
-  // Witzige Sprüche für die Bestätigung
+  // Die gewünschten Sprüche mit Jérôme
   const funQuotes = [
+    "Jérôme hat die Gummistiefel schon an und flitzt im Tiefflug zum Acker!",
+    "Deine Wünsche sind tief im Boden versenkt!",
     "Das Gemüse freut sich schon riesig auf dein Zuhause!",
-    "Jerome hat die Karotten gerade nochmal extra gestreichelt.",
+    "Jérôme hat die Karotten gerade nochmal extra gestreichelt.",
     "Die Würmer im Acker weinen, weil du so viel tolles Zeug mitnimmst.",
-    "Jerome schärft schon mal die Harke für deine nächste Ladung.",
-    "Deine Kiste ist so schwer, Jerome macht dafür extra Liegestütze."
+    "Jérôme schärft schon mal die Harke für deine nächste Ladung.",
+    "Deine Kiste ist so schwer, Jérôme macht dafür extra Liegestütze."
   ];
-  const [quote] = useState(() => funQuotes[Math.floor(Math.random() * funQuotes.length)]);
+  const [quote] = useState(() => funQuotes[0]); // Gummistiefel-Spruch als Standard
 
   useEffect(() => {
     if (!order) { navigate('/'); return; }
@@ -66,7 +68,7 @@ const Success: React.FC = () => {
             <CheckCircle className="w-12 h-12 text-white" />
           </div>
           <h2 className="text-3xl font-black uppercase tracking-tighter leading-none mb-4">Acker-Mission:<br/>Erfolgreich!</h2>
-          <p className="opacity-95 font-black text-[10px] uppercase tracking-[0.2em] leading-relaxed italic">
+          <p className="opacity-95 font-black text-[10px] uppercase tracking-[0.2em] leading-relaxed italic px-4">
             "{quote}"
           </p>
         </div>
@@ -90,7 +92,7 @@ const Success: React.FC = () => {
             </div>
             <div>
               <p className="text-[10px] font-black uppercase tracking-widest text-[#1a4d2e]">Vor Ort</p>
-              <p className="text-xs font-bold text-gray-600">Jerome packt dir alles zusammen. <br/>Zahlung ganz entspannt in Bar.</p>
+              <p className="text-xs font-bold text-gray-600">Jérôme packt dir alles zusammen. <br/>Zahlung ganz entspannt in Bar.</p>
             </div>
           </div>
 
