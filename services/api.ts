@@ -56,19 +56,6 @@ const MOCK_PRODUCTS: Product[] = [
   }
 ];
 
-const mapProduct = (p: any): Product => ({
-  id: p.id,
-  name: p.name || 'Unbekannt',
-  pricePerUnit: p.price_per_unit ? Number(p.price_per_unit) : 0,
-  unit: p.unit || 'Stück',
-  imageUrl: p.image_url || 'https://images.unsplash.com/photo-1566385908041-9c9ca335606d?w=400',
-  stockQuantity: p.stock_quantity !== undefined ? Number(p.stock_quantity) : 0,
-  isActive: p.is_active ?? true,
-  description: p.description || '',
-  discount: p.discount ? Number(p.discount) : 0,
-  isBogo: p.is_bogo ?? false
-});
-
 export const getWeekLabel = (date: Date): string => {
   const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
   const dayNum = d.getUTCDay() || 7;
@@ -176,28 +163,6 @@ export const ApiService = {
     localStorage.setItem('eifel_gemuese_orders_mock', JSON.stringify(orders));
     return finalOrder;
   },
-  
-  async getHarvestedStatus(): Promise<string[]> {
-    const s = localStorage.getItem('eifel_gemuese_harvested_mock');
-    return s ? JSON.parse(s) : [];
-  },
-
-  async toggleHarvested(name: string) {
-    const current = await this.getHarvestedStatus();
-    const next = current.includes(name) ? current.filter(n => n !== name) : [...current, name];
-    localStorage.setItem('eifel_gemuese_harvested_mock', JSON.stringify(next));
-  },
-
-  async togglePackedStatus(orderId: string, itemIdx: number) {
-    const ordersStr = localStorage.getItem('eifel_gemuese_orders_mock');
-    if (!ordersStr) return;
-    let orders: Order[] = JSON.parse(ordersStr);
-    const oIdx = orders.findIndex(o => o.id === orderId);
-    if (oIdx > -1) {
-      orders[oIdx].items[itemIdx].packed = !orders[oIdx].items[itemIdx].packed;
-      localStorage.setItem('eifel_gemuese_orders_mock', JSON.stringify(orders));
-    }
-  },
 
   async saveProduct(p: Product) {
     if (supabase) {
@@ -244,5 +209,40 @@ export const ApiService = {
 
   async clearAllOrders() {
     localStorage.removeItem('eifel_gemuese_orders_mock');
+  },
+
+  async getHarvestedStatus(): Promise<string[]> {
+    const s = localStorage.getItem('eifel_gemuese_harvested_mock');
+    return s ? JSON.parse(s) : [];
+  },
+
+  async toggleHarvested(name: string) {
+    const current = await this.getHarvestedStatus();
+    const next = current.includes(name) ? current.filter(n => n !== name) : [...current, name];
+    localStorage.setItem('eifel_gemuese_harvested_mock', JSON.stringify(next));
+  },
+
+  async togglePackedStatus(orderId: string, itemIdx: number) {
+    const ordersStr = localStorage.getItem('eifel_gemuese_orders_mock');
+    if (!ordersStr) return;
+    let orders: Order[] = JSON.parse(ordersStr);
+    const oIdx = orders.findIndex(o => o.id === orderId);
+    if (oIdx > -1) {
+      orders[oIdx].items[itemIdx].packed = !orders[oIdx].items[itemIdx].packed;
+      localStorage.setItem('eifel_gemuese_orders_mock', JSON.stringify(orders));
+    }
   }
 };
+
+const mapProduct = (p: any): Product => ({
+  id: p.id,
+  name: p.name || 'Unbekannt',
+  pricePerUnit: p.price_per_unit ? Number(p.price_per_unit) : 0,
+  unit: p.unit || 'Stück',
+  imageUrl: p.image_url || 'https://images.unsplash.com/photo-1566385908041-9c9ca335606d?w=400',
+  stockQuantity: p.stock_quantity !== undefined ? Number(p.stock_quantity) : 0,
+  isActive: p.is_active ?? true,
+  description: p.description || '',
+  discount: p.discount ? Number(p.discount) : 0,
+  isBogo: p.is_bogo ?? false
+});
