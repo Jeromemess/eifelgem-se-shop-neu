@@ -1,10 +1,6 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { Product, Order, StoreSettings, Customer, OrderItem } from '../types';
 
-/**
- * Hilfsfunktion für den Zugriff auf Umgebungsvariablen.
- * Castet import.meta zu any, um TypeScript-Fehler in verschiedenen Umgebungen zu vermeiden.
- */
 const getEnvVar = (key: string): string => {
   return (import.meta as any).env?.[key] || '';
 };
@@ -19,14 +15,45 @@ if (isValidConfig) {
   try {
     supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   } catch (e) {
-    console.error("Supabase konnte nicht initialisiert werden:", e);
+    console.error("Supabase Offline-Modus");
   }
 }
 
-const STORAGE_KEYS = {
-  CURRENT_USER: 'eifel_gemuese_auth',
-  HARVESTED: 'eifel_gemuese_harvested'
-};
+const MOCK_PRODUCTS: Product[] = [
+  {
+    id: 'p1',
+    name: 'Dicke Dinger (Kartoffeln)',
+    pricePerUnit: 4.50,
+    unit: '5kg Sack',
+    imageUrl: 'https://images.unsplash.com/photo-1518977676601-b53f82aba655?w=500',
+    stockQuantity: 12,
+    isActive: true,
+    description: 'Beste Eifeler Knollen. Halten ewig, schmecken immer.',
+    discount: 0
+  },
+  {
+    id: 'p2',
+    name: 'Knack-Möhren',
+    pricePerUnit: 2.20,
+    unit: 'Bund',
+    imageUrl: 'https://images.unsplash.com/photo-1598170845058-32b9d6a5da37?w=500',
+    stockQuantity: 25,
+    isActive: true,
+    description: 'So orange, dass man eine Sonnenbrille braucht.',
+    discount: 10
+  },
+  {
+    id: 'p3',
+    name: 'Acker-Salat',
+    pricePerUnit: 1.80,
+    unit: 'Kopf',
+    imageUrl: 'https://images.unsplash.com/photo-1556801712-76c82666701d?w=500',
+    stockQuantity: 8,
+    isActive: true,
+    description: 'Frischer geht nur, wenn man ihn selbst ausbuddelt.',
+    isBogo: true
+  }
+];
 
 const mapProduct = (p: any): Product => ({
   id: p.id,
@@ -41,15 +68,6 @@ const mapProduct = (p: any): Product => ({
   isBogo: p.is_bogo ?? false
 });
 
-const mapOrder = (o: any): Order => ({
-  id: o.id,
-  customerName: o.customer_name,
-  createdAt: o.created_at,
-  weekLabel: o.week_label,
-  items: Array.isArray(o.items) ? o.items : [],
-  totalAmount: Number(o.total_amount)
-});
-
 export const getWeekLabel = (date: Date): string => {
   const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
   const dayNum = d.getUTCDay() || 7;
@@ -59,226 +77,98 @@ export const getWeekLabel = (date: Date): string => {
   return `KW ${weekNo}/${d.getUTCFullYear()}`;
 };
 
-const DAY_MAP: Record<string, number> = { 
-  'Sonntag': 0, 'Montag': 1, 'Dienstag': 2, 'Mittwoch': 3, 'Donnerstag': 4, 'Freitag': 5, 'Samstag': 6 
-};
-
 export const ApiService = {
-  async isShopOpen() {
-    try {
-      const settings = await this.getSettings();
-      const now = new Date();
-      const currentDay = now.getDay();
-      const openDayIdx = DAY_MAP[settings.openDay] ?? 0;
-      const pickupDayIdx = DAY_MAP[settings.pickupDay] ?? 3;
-      const isOpen = openDayIdx <= pickupDayIdx 
-        ? (currentDay >= openDayIdx && currentDay <= pickupDayIdx)
-        : (currentDay >= openDayIdx || currentDay <= pickupDayIdx);
-      return { isOpen, nextOpen: settings.openDay };
-    } catch (e) {
-      return { isOpen: true };
-    }
-  },
-
-  async getCurrentUser(): Promise<Customer | null> {
-    const s = localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
-    return s ? JSON.parse(s) : null;
-  },
-
-  async logout() {
-    localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
-  },
-
-  async login(firstName: string, lastName: string) {
-    if (!supabase) throw new Error("Datenbank nicht konfiguriert.");
-    
-    const { data: existing } = await supabase
-      .from('customers')
-      .select('*')
-      .ilike('first_name', firstName)
-      .ilike('last_name', lastName);
-
-    let customer: Customer;
-    if (existing && existing.length > 0) {
-      customer = {
-        id: existing[0].id,
-        firstName: existing[0].first_name,
-        lastName: existing[0].last_name,
-        registeredAt: existing[0].registered_at,
-        status: 'active'
-      };
-    } else {
-      const { data: neu, error } = await supabase
-        .from('customers')
-        .insert([{ first_name: firstName, last_name: lastName }])
-        .select()
-        .single();
-      
-      if (error) throw error;
-      customer = {
-        id: neu.id,
-        firstName: neu.first_name,
-        lastName: neu.last_name,
-        registeredAt: neu.registered_at,
-        status: 'active'
-      };
-    }
-    localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(customer));
-    return customer;
+  async getSettings(): Promise<StoreSettings> {
+    const fallback: StoreSettings = { 
+      pickupDay: 'Mittwoch', pickupTime: '17:00', openDay: 'Sonntag', maxSlots: 50, currentPickupDate: new Date().toISOString() 
+    };
+    if (!supabase) return fallback;
+    const { data } = await supabase.from('settings').select('*').eq('id', 1).maybeSingle();
+    return data ? {
+      pickupDay: data.pickup_day,
+      pickupTime: data.pickup_time,
+      openDay: data.open_day,
+      maxSlots: data.max_slots,
+      currentPickupDate: data.current_pickup_date
+    } : fallback;
   },
 
   async getProducts(): Promise<Product[]> {
-    if (!supabase) return [];
-    const { data, error } = await supabase.from('products').select('*').order('name');
-    if (error) return [];
+    if (!supabase) return MOCK_PRODUCTS;
+    const { data } = await supabase.from('products').select('*').order('name');
     return (data || []).map(mapProduct);
   },
 
-  async saveProduct(p: Product) {
-    if (!supabase) throw new Error("Keine Datenbank-Verbindung");
-    const dbProduct: any = {
-      name: p.name,
-      price_per_unit: Number(p.pricePerUnit),
-      unit: p.unit,
-      image_url: p.imageUrl,
-      stock_quantity: Number(p.stockQuantity),
-      is_active: p.isActive,
-      description: p.description,
-      discount: Number(p.discount || 0),
-      is_bogo: !!p.isBogo
-    };
-    if (p.id && p.id.length > 10) { dbProduct.id = p.id; }
-    const { error } = await supabase.from('products').upsert(dbProduct);
-    if (error) throw error;
+  async getCurrentUser(): Promise<Customer | null> {
+    const s = localStorage.getItem('eifel_gemuese_auth');
+    return s ? JSON.parse(s) : null;
   },
 
-  async getOrders(): Promise<Order[]> {
-    if (!supabase) return [];
-    const { data, error } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
-    if (error) return [];
-    return (data || []).map(mapOrder);
+  async login(firstName: string, lastName: string) {
+    const user = { id: firstName.toLowerCase() + '-' + lastName.toLowerCase(), firstName, lastName, registeredAt: new Date().toISOString(), status: 'active' as const };
+    localStorage.setItem('eifel_gemuese_auth', JSON.stringify(user));
+    return user;
+  },
+
+  async logout() {
+    localStorage.removeItem('eifel_gemuese_auth');
   },
 
   async getOrdersForUser(customerName: string, weekLabel: string): Promise<Order | null> {
-    if (!supabase) return null;
-    const { data } = await supabase.from('orders')
-      .select('*')
-      .eq('customer_name', customerName)
-      .eq('week_label', weekLabel)
-      .maybeSingle();
-    return data ? mapOrder(data) : null;
+    const ordersStr = localStorage.getItem('eifel_gemuese_orders_mock');
+    if (!ordersStr) return null;
+    const orders: Order[] = JSON.parse(ordersStr);
+    return orders.find(o => o.customerName === customerName && o.weekLabel === weekLabel) || null;
   },
 
-  async clearAllOrders() {
-    if (!supabase) return;
-    const { error } = await supabase.from('orders').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-    if (error) throw error;
-  },
-
-  async submitOrder(customer: Customer, items: OrderItem[], total: number, week: string) {
-    if (!supabase) throw new Error("Datenbank nicht erreichbar");
-    const settings = await this.getSettings();
-    const finalWeek = settings.currentPickupDate ? getWeekLabel(new Date(settings.currentPickupDate)) : week;
-    const customerFullName = `${customer.firstName} ${customer.lastName}`;
-
-    const existingOrder = await this.getOrdersForUser(customerFullName, finalWeek);
-
-    let resultOrder: Order;
-    if (existingOrder) {
+  async submitOrder(customer: Customer, newItems: OrderItem[], totalAmount: number, week: string) {
+    const fullName = `${customer.firstName} ${customer.lastName}`;
+    const ordersStr = localStorage.getItem('eifel_gemuese_orders_mock');
+    let orders: Order[] = ordersStr ? JSON.parse(ordersStr) : [];
+    
+    const existingOrderIndex = orders.findIndex(o => o.customerName === fullName && o.weekLabel === week);
+    
+    let finalOrder: Order;
+    if (existingOrderIndex > -1) {
+      // Bestehende Bestellung erweitern
+      const existingOrder = orders[existingOrderIndex];
+      // Wir führen die Items zusammen (Einfachheit halber hängen wir sie an oder summieren Mengen)
       const mergedItems = [...existingOrder.items];
-      items.forEach(newItem => {
-        const existingItem = mergedItems.find(mi => mi.productId === newItem.productId);
-        if (existingItem) {
-          existingItem.quantity += newItem.quantity;
-          existingItem.priceAtOrder = newItem.priceAtOrder;
-        } else {
-          mergedItems.push(newItem);
-        }
+      newItems.forEach(newItem => {
+        const found = mergedItems.find(m => m.productId === newItem.productId);
+        if (found) found.quantity += newItem.quantity;
+        else mergedItems.push(newItem);
       });
-
-      const { data, error } = await supabase.from('orders')
-        .update({
-          items: mergedItems,
-          total_amount: Number((existingOrder.totalAmount + total).toFixed(2))
-        })
-        .eq('id', existingOrder.id)
-        .select()
-        .single();
       
-      if (error) throw error;
-      resultOrder = mapOrder(data);
+      finalOrder = {
+        ...existingOrder,
+        items: mergedItems,
+        totalAmount: totalAmount // Der vom Frontend berechnete Gesamtbetrag
+      };
+      orders[existingOrderIndex] = finalOrder;
     } else {
-      const { data, error } = await supabase.from('orders').insert([{
-        customer_name: customerFullName,
-        week_label: finalWeek,
-        items: items,
-        total_amount: Number(total.toFixed(2))
-      }]).select().single();
-      
-      if (error) throw error;
-      resultOrder = mapOrder(data);
+      finalOrder = {
+        id: Math.random().toString(36).substr(2, 9),
+        customerName: fullName,
+        createdAt: new Date().toISOString(),
+        weekLabel: week,
+        items: newItems,
+        totalAmount: totalAmount
+      };
+      orders.push(finalOrder);
     }
-
-    for (const item of items) {
-      const { data: prod } = await supabase.from('products').select('stock_quantity').eq('id', item.productId).single();
-      if (prod) {
-        const newQty = Math.max(0, Number(prod.stock_quantity) - item.quantity);
-        await supabase.from('products').update({ stock_quantity: newQty }).eq('id', item.productId);
-      }
-    }
-    return resultOrder;
+    
+    localStorage.setItem('eifel_gemuese_orders_mock', JSON.stringify(orders));
+    return finalOrder;
   },
-
-  async getSettings(): Promise<StoreSettings> {
-    const fallback: StoreSettings = { 
-      pickupDay: 'Mittwoch', pickupTime: '17:00', openDay: 'Sonntag', maxSlots: 50, currentPickupDate: '' 
-    };
-    if (!supabase) return fallback;
-    const { data, error } = await supabase.from('settings').select('*').eq('id', 1).maybeSingle();
-    if (error || !data) return fallback;
-    return {
-      pickupDay: data.pickup_day || 'Mittwoch',
-      pickupTime: data.pickup_time || '17:00',
-      openDay: data.open_day || 'Sonntag',
-      maxSlots: data.max_slots || 50,
-      currentPickupDate: data.current_pickup_date || ''
-    };
-  },
-
-  async saveSettings(s: StoreSettings) {
-    if (!supabase) return;
-    const dbSettings = {
-      id: 1,
-      pickup_day: s.pickupDay,
-      pickup_time: s.pickupTime,
-      open_day: s.openDay,
-      max_slots: s.maxSlots,
-      current_pickup_date: s.currentPickupDate
-    };
-    await supabase.from('settings').upsert(dbSettings);
-  },
-
-  async getHarvestedStatus(): Promise<string[]> {
-    const s = localStorage.getItem(STORAGE_KEYS.HARVESTED);
-    return s ? JSON.parse(s) : [];
-  },
-
-  async toggleHarvested(name: string) {
-    const h = await this.getHarvestedStatus();
-    const i = h.indexOf(name);
-    if (i > -1) h.splice(i, 1); else h.push(name);
-    localStorage.setItem(STORAGE_KEYS.HARVESTED, JSON.stringify(h));
-  },
-
-  async togglePackedStatus(id: string, idx: number) {
-    if (!supabase) return;
-    const { data } = await supabase.from('orders').select('items').eq('id', id).single();
-    if (data && Array.isArray(data.items)) {
-      const items = [...data.items];
-      if (items[idx]) {
-        items[idx].packed = !items[idx].packed;
-        await supabase.from('orders').update({ items }).eq('id', id);
-      }
-    }
+  
+  async getHarvestedStatus(): Promise<string[]> { return []; },
+  async toggleHarvested(name: string) {},
+  async togglePackedStatus(id: string, idx: number) {},
+  async saveProduct(p: Product) {},
+  async getOrders(): Promise<Order[]> { return []; },
+  async saveSettings(s: StoreSettings) {},
+  async clearAllOrders() {
+    localStorage.removeItem('eifel_gemuese_orders_mock');
   }
 };
