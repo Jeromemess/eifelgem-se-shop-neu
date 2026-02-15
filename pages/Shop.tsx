@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
 import { ApiService, getWeekLabel } from '../services/api';
 import { Product, Customer, OrderItem, Order, StoreSettings } from '../types';
-import { Loader2, X, ArrowRight, Calendar, UserPlus, ShoppingCart, History, Plus, AlertCircle } from 'lucide-react';
+import { Loader2, X, ArrowRight, Calendar, UserPlus, ShoppingCart, History, Plus, AlertCircle, Sprout, ShoppingBag, Banknote } from 'lucide-react';
 
 const Shop: React.FC = () => {
   const navigate = useNavigate();
@@ -36,10 +36,6 @@ const Shop: React.FC = () => {
         setProducts(prodData.filter(p => p.isActive));
         setSettings(storeSettings);
 
-        if (prodData.length === 0) {
-          setError("Keine Produkte gefunden. Bitte Datenbank prüfen.");
-        }
-
         if (user) {
           const week = storeSettings.currentPickupDate 
             ? getWeekLabel(new Date(storeSettings.currentPickupDate)) 
@@ -48,8 +44,7 @@ const Shop: React.FC = () => {
           setPreviousOrder(prev);
         }
       } catch (err: any) {
-        console.error("Shop Load Error:", err);
-        setError("Verbindung zur Datenbank fehlgeschlagen.");
+        setError("Die Verbindung zum Acker hakt gerade etwas.");
       } finally {
         if (active) setIsLoading(false);
       }
@@ -102,14 +97,14 @@ const Shop: React.FC = () => {
     try {
       let user = currentUser;
       if (!user) {
-        if (!firstName || !lastName) throw new Error("Name ist erforderlich.");
+        if (!firstName || !lastName) throw new Error("Wer bist du? Name fehlt!");
         user = await ApiService.login(firstName, lastName);
         setCurrentUser(user);
       }
       
       const newItems: OrderItem[] = Object.entries(cart).map(([productId, quantity]) => {
         const p = products.find(prod => prod.id === productId);
-        if (!p) throw new Error("Produkt nicht gefunden");
+        if (!p) throw new Error("Das Gemüse ist wohl gerade weggerannt.");
         const paidQty = Number(quantity);
         const physicalQty = p.isBogo ? paidQty * 2 : paidQty;
         const totalLinePrice = calculateTotalToPay(p, paidQty);
@@ -122,7 +117,9 @@ const Shop: React.FC = () => {
         };
       });
 
-      const order = await ApiService.submitOrder(user, newItems, cartTotal, getWeekLabel(new Date()));
+      const totalCombinedTotal = (previousOrder?.totalAmount || 0) + cartTotal;
+      const order = await ApiService.submitOrder(user, newItems, totalCombinedTotal, getWeekLabel(new Date()));
+      
       navigate('/success', { state: { order, newItems: newItems } });
     } catch (err: any) {
       alert(err.message || 'Fehler beim Senden.');
@@ -132,14 +129,7 @@ const Shop: React.FC = () => {
 
   if (isLoading) return <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4">
     <Loader2 className="w-10 h-10 text-[#1a4d2e] animate-spin" />
-    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Verbindung zum Acker wird aufgebaut...</p>
-  </div>;
-
-  if (error) return <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4 px-6 text-center">
-    <AlertCircle className="w-12 h-12 text-red-500 mb-2" />
-    <h3 className="text-2xl font-black uppercase tracking-tighter">Hoppla!</h3>
-    <p className="text-gray-500 max-w-xs font-medium">{error}</p>
-    <button onClick={() => window.location.reload()} className="mt-4 px-6 py-3 bg-[#1a4d2e] text-white rounded-xl font-black uppercase text-[10px] tracking-widest">Nochmal versuchen</button>
+    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Wir schauen nach, was auf dem Acker los ist...</p>
   </div>;
 
   return (
@@ -171,11 +161,13 @@ const Shop: React.FC = () => {
 
       {cartCount > 0 && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 w-full max-w-xs px-4">
-          <button onClick={() => setIsCheckoutOpen(true)} className="w-full bg-[#121a14] text-white p-2 rounded-full shadow-2xl flex items-center justify-between border border-white/10 transition-all hover:scale-105 active:scale-95 pointer-events-auto">
+          <button onClick={() => setIsCheckoutOpen(true)} className="w-full bg-[#121a14] text-white p-2 rounded-full shadow-2xl flex items-center justify-between border border-white/10 transition-all hover:scale-105 active:scale-95">
             <div className="flex items-center gap-3 ml-4">
               <div className="bg-[#1a4d2e] text-white w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-black">{cartCount}</div>
             </div>
-            <div className="bg-[#1a4d2e] text-white py-3 px-8 rounded-full font-black text-[10px] uppercase tracking-widest flex items-center gap-2">Kiste füllen <ArrowRight className="w-3 h-3" /></div>
+            <div className="bg-[#1a4d2e] text-white py-3 px-8 rounded-full font-black text-[10px] uppercase tracking-widest flex items-center gap-2">
+              {previousOrder ? 'Zu meiner Ernte hinzufügen' : 'Beute sichern'} <ArrowRight className="w-3 h-3" />
+            </div>
           </button>
         </div>
       )}
@@ -185,46 +177,89 @@ const Shop: React.FC = () => {
           <div className="absolute inset-0 bg-[#121a14]/80 backdrop-blur-md" onClick={() => !isSubmitting && setIsCheckoutOpen(false)} />
           <div className="relative bg-white w-full max-w-xl rounded-[3rem] overflow-hidden shadow-2xl p-8 sm:p-14 max-h-[90vh] overflow-y-auto no-scrollbar animate-in zoom-in-95 duration-200">
             <div className="flex justify-between items-start mb-10">
-              <h3 className="text-3xl font-black text-[#121a14] tracking-tighter uppercase leading-none">Bestellung</h3>
+              <div>
+                <h3 className="text-3xl font-black text-[#121a14] tracking-tighter uppercase leading-none">Blick in deine Kiste</h3>
+                <p className="text-[9px] font-black text-[#1a4d2e] uppercase tracking-widest mt-2">Wir packen alles zusammen!</p>
+              </div>
               <button onClick={() => setIsCheckoutOpen(false)} className="p-2 hover:bg-gray-100 rounded-full"><X className="w-8 h-8 text-gray-400" /></button>
             </div>
 
             <div className="space-y-6 mb-10">
+              {/* VORHERIGE BESTELLUNG IM CHECKOUT (SUBTIL GRAU) */}
               {previousOrder && (
                 <div className="bg-gray-50 border-2 border-dashed border-gray-200 rounded-[2rem] p-6 opacity-60">
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2"><History className="w-4 h-4" /> Bisher reserviert:</p>
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                    <History className="w-4 h-4" /> Schon sicher in deiner Kiste:
+                  </p>
                   <div className="space-y-2">
                     {previousOrder.items.map((item, idx) => (
-                      <div key={idx} className="flex justify-between text-sm font-bold text-gray-500">
+                      <div key={idx} className="flex justify-between text-sm font-bold text-gray-400">
                         <span>{item.quantity}x {item.productName}</span>
-                        <span>{(item.priceAtOrder * item.quantity).toFixed(2)} €</span>
+                        <span className="tabular-nums">{(item.priceAtOrder * item.quantity).toFixed(2)} €</span>
                       </div>
                     ))}
                   </div>
                 </div>
               )}
 
+              {/* NEUE ARTIKEL IM CHECKOUT (KRÄFTIG GRÜN) */}
               <div className="bg-[#fdfaf3] rounded-[2rem] p-8 border-2 border-[#1a4d2e]/10">
-                <p className="text-[10px] font-black text-[#1a4d2e] uppercase tracking-widest mb-6 flex items-center gap-2"><ShoppingCart className="w-4 h-4" /> Jetzt neu dazu:</p>
-                <div className="space-y-6 mb-8">
+                <p className="text-[10px] font-black text-[#1a4d2e] uppercase tracking-widest mb-6 flex items-center gap-2">
+                  <ShoppingCart className="w-4 h-4" /> {previousOrder ? 'Gerade hinzugefügt:' : 'Deine Auswahl:'}
+                </p>
+                <div className="space-y-4 mb-8">
                   {Object.entries(cart).map(([id, qty]) => {
                     const p = products.find(prod => prod.id === id);
                     if (!p) return null;
                     const lineTotal = calculateTotalToPay(p, Number(qty));
+                    const originalTotal = p.pricePerUnit * Number(qty);
+                    const isDiscounted = (p.discount || 0) > 0;
+
                     return (
-                      <div key={id} className="flex justify-between items-center text-xl font-black">
-                        <span>{p.name} <span className="text-xs text-[#1a4d2e] ml-2">{qty}x</span></span>
-                        <span className="text-gray-400 text-sm tabular-nums">{lineTotal.toFixed(2)} €</span>
+                      <div key={id} className="flex justify-between items-center text-xl font-black text-[#121a14]">
+                        <span className="uppercase tracking-tighter">
+                          {p.name} <span className="text-xs text-[#1a4d2e] ml-2">({qty}x)</span>
+                        </span>
+                        <div className="text-right">
+                          {isDiscounted && (
+                            <span className="block text-[10px] text-gray-300 line-through tabular-nums leading-none mb-1">
+                              {originalTotal.toFixed(2)} €
+                            </span>
+                          )}
+                          <span className="text-[#1a4d2e] text-sm tabular-nums">
+                            {lineTotal.toFixed(2)} €
+                          </span>
+                        </div>
                       </div>
                     );
                   })}
                 </div>
                 
-                <div className="pt-6 border-t border-white/50 flex justify-between items-end">
-                   <div className="text-[9px] font-black text-gray-400 uppercase">Gesamtbetrag am Hof</div>
-                   <span className="text-4xl font-black text-[#1a4d2e] tabular-nums">
-                    {Number(((previousOrder?.totalAmount || 0) + cartTotal).toFixed(2))} €
-                   </span>
+                {/* PREIS-ZUSAMMENFASSUNG */}
+                <div className="pt-6 border-t border-gray-200 space-y-2">
+                   {previousOrder && (
+                     <>
+                      <div className="flex justify-between text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">
+                        <span>Bisheriger Betrag:</span>
+                        <span>{previousOrder.totalAmount.toFixed(2)} €</span>
+                      </div>
+                      <div className="flex justify-between text-[10px] font-black text-[#1a4d2e] uppercase tracking-widest leading-none">
+                        <span>Neu dazu:</span>
+                        <span>{cartTotal.toFixed(2)} €</span>
+                      </div>
+                     </>
+                   )}
+                   <div className="flex justify-between items-end pt-2">
+                      <div className="text-[11px] font-black text-gray-500 uppercase tracking-widest leading-none">Gesamt am Hof:</div>
+                      <span className="text-4xl font-black text-[#1a4d2e] tabular-nums leading-none">
+                        {((previousOrder?.totalAmount || 0) + cartTotal).toFixed(2)} €
+                      </span>
+                   </div>
+                   
+                   <div className="mt-4 flex items-center gap-2 text-[#1a4d2e] opacity-60">
+                     <Banknote className="w-3 h-3" />
+                     <p className="text-[8px] font-black uppercase tracking-widest">Alles vor Ort am Feld bar bezahlen</p>
+                   </div>
                 </div>
               </div>
             </div>
@@ -237,13 +272,13 @@ const Shop: React.FC = () => {
                 </div>
               ) : (
                 <div className="bg-[#1a4d2e]/5 p-6 rounded-2xl border border-[#1a4d2e]/10 text-center relative">
-                  <button type="button" onClick={handleSwitchUser} className="absolute top-4 right-4 text-[#1a4d2e] hover:text-black transition-colors"><UserPlus className="w-4 h-4" /></button>
+                  <button type="button" onClick={handleSwitchUser} className="absolute top-4 right-4 text-[#1a4d2e] hover:text-black transition-colors" title="Nutzer wechseln"><UserPlus className="w-4 h-4" /></button>
                   <p className="text-xl font-black uppercase tracking-tight">{currentUser.firstName} {currentUser.lastName}</p>
-                  <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">Die neue Auswahl wird deiner Kiste hinzugefügt.</p>
+                  <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-1">Packen wir es in deine Kiste!</p>
                 </div>
               )}
               <button type="submit" disabled={isSubmitting} className="w-full bg-[#1a4d2e] text-white py-6 rounded-2xl font-black uppercase tracking-widest shadow-xl flex items-center justify-center gap-3 hover:bg-black transition-all active:scale-95">
-                {isSubmitting ? <Loader2 className="w-6 h-6 animate-spin" /> : <><Plus className="w-5 h-5" /> {previousOrder ? 'Aktualisieren & Speichern' : 'Reservierung abschicken'}</>}
+                {isSubmitting ? <Loader2 className="w-6 h-6 animate-spin" /> : <><ShoppingBag className="w-5 h-5" /> {previousOrder ? 'Zu meiner Ernte hinzufügen' : 'Mission Ernte starten!'}</>}
               </button>
             </form>
           </div>
