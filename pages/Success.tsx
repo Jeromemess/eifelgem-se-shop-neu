@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useLocation, Link, useNavigate } from 'react-router-dom';
 import { Order, OrderItem } from '../types';
@@ -30,7 +31,7 @@ const Success: React.FC = () => {
           });
         }
       } catch (err) {
-        console.error("Success Page Settings Load Error:", err);
+        console.error("Fehler:", err);
       }
     };
     loadPickup();
@@ -54,7 +55,6 @@ const Success: React.FC = () => {
     <div className="min-h-[85vh] flex items-center justify-center px-4 py-8 bg-[#fdfbf7] pb-24">
       <div className="max-w-2xl w-full bg-white rounded-[3rem] shadow-2xl border border-[#f5f2e8] overflow-hidden animate-in fade-in zoom-in-95 duration-500">
         
-        {/* Header mit Jèrôme Spruch (Ohne Orange) */}
         <div className="bg-[#1a4d2e] p-10 text-center text-white relative">
           <div className="absolute top-4 right-6 opacity-10 rotate-12">
              <Tractor className="w-24 h-24" />
@@ -70,7 +70,6 @@ const Success: React.FC = () => {
         </div>
 
         <div className="p-8 sm:p-12">
-          {/* Abhol-Information */}
           {pickupInfo && (
             <div className="bg-[#fdfaf3] border border-[#f5f2e8] rounded-[2.5rem] p-8 mb-10 text-center shadow-inner relative overflow-hidden">
                 <Calendar className="w-8 h-8 text-[#1a4d2e] mx-auto mb-4" />
@@ -86,7 +85,6 @@ const Success: React.FC = () => {
                <span className="text-2xl font-black text-black uppercase tracking-tighter border-b-4 border-[#1a4d2e]/20">{order.customerName}</span>
             </div>
 
-            {/* NEUE ARTIKEL */}
             <div className="space-y-5">
               <h4 className="flex items-center gap-3 text-[11px] font-black uppercase tracking-widest text-[#1a4d2e]">
                 <div className="w-8 h-8 rounded-full bg-[#1a4d2e] text-white flex items-center justify-center">
@@ -111,7 +109,6 @@ const Success: React.FC = () => {
               </div>
             </div>
 
-            {/* BEREITS VORHANDENE ARTIKEL */}
             {isFollowUpOrder && (
               <div className="space-y-5 pt-4">
                 <h4 className="flex items-center gap-3 text-[11px] font-black uppercase tracking-widest text-gray-400">
@@ -133,9 +130,7 @@ const Success: React.FC = () => {
               </div>
             )}
 
-            {/* GESAMTSUMME */}
             <div className="pt-8 flex flex-col items-center border-t-2 border-[#f5f2e8] mt-8 bg-[#121a14] text-white rounded-[3rem] p-10 shadow-2xl relative overflow-hidden">
-              <div className="absolute top-0 left-0 w-full h-1 bg-white/20"></div>
               <span className="font-black text-[#1a4d2e] uppercase tracking-[0.3em] text-[10px] mb-2">Gesamtbetrag der Kiste</span>
               <span className="font-black text-6xl tracking-tighter tabular-nums flex items-start">
                 {order.totalAmount.toFixed(2)} <span className="text-2xl mt-2 ml-1">€</span>
