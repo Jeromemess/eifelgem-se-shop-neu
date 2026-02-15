@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
@@ -129,7 +128,7 @@ const Shop: React.FC = () => {
 
   if (isLoading) return <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4">
     <Loader2 className="w-10 h-10 text-[#1a4d2e] animate-spin" />
-    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Wir schauen nach, was auf dem Acker los ist...</p>
+    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Der Acker wird gescannt...</p>
   </div>;
 
   return (
@@ -251,9 +250,9 @@ const Shop: React.FC = () => {
                       </span>
                    </div>
                    
-                   <div className="mt-4 flex items-center gap-2 text-[#1a4d2e] opacity-60">
-                     <Banknote className="w-3 h-3" />
-                     <p className="text-[8px] font-black uppercase tracking-widest">Alles vor Ort am Feld bar bezahlen</p>
+                   <div className="mt-4 flex items-center gap-2 text-[#1a4d2e] bg-[#1a4d2e]/5 p-3 rounded-xl border border-[#1a4d2e]/10">
+                     <Banknote className="w-4 h-4 shrink-0" />
+                     <p className="text-[9px] font-black uppercase tracking-widest leading-tight">Alles vor Ort am Feld bar bezahlen</p>
                    </div>
                 </div>
               </div>
@@ -269,6 +268,7 @@ const Shop: React.FC = () => {
                 <div className="bg-[#1a4d2e]/5 p-6 rounded-2xl border border-[#1a4d2e]/10 text-center relative">
                   <button type="button" onClick={handleSwitchUser} className="absolute top-4 right-4 text-[#1a4d2e] hover:text-black transition-colors" title="Nutzer wechseln"><UserPlus className="w-4 h-4" /></button>
                   <p className="text-xl font-black uppercase tracking-tight">{currentUser.firstName} {currentUser.lastName}</p>
+                  <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-1">Packen wir es in deine Kiste!</p>
                 </div>
               )}
               <button type="submit" disabled={isSubmitting} className="w-full bg-[#1a4d2e] text-white py-6 rounded-2xl font-black uppercase tracking-widest shadow-xl flex items-center justify-center gap-3 hover:bg-black transition-all active:scale-95">
