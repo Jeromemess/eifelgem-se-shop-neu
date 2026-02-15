@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useLocation, Link, useNavigate } from 'react-router-dom';
 import { Order, OrderItem } from '../types';
@@ -31,7 +30,7 @@ const Success: React.FC = () => {
           });
         }
       } catch (err) {
-        console.error("Fehler:", err);
+        console.error("Fehler beim Laden der Abholinfo:", err);
       }
     };
     loadPickup();
@@ -131,12 +130,13 @@ const Success: React.FC = () => {
             )}
 
             <div className="pt-8 flex flex-col items-center border-t-2 border-[#f5f2e8] mt-8 bg-[#121a14] text-white rounded-[3rem] p-10 shadow-2xl relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-full h-1 bg-white/10"></div>
               <span className="font-black text-[#1a4d2e] uppercase tracking-[0.3em] text-[10px] mb-2">Gesamtbetrag der Kiste</span>
               <span className="font-black text-6xl tracking-tighter tabular-nums flex items-start">
                 {order.totalAmount.toFixed(2)} <span className="text-2xl mt-2 ml-1">€</span>
               </span>
-              <div className="mt-6 px-6 py-3 bg-[#1a4d2e] rounded-full border border-white/10 flex items-center gap-3">
-                <Banknote className="w-5 h-5" />
+              <div className="mt-6 px-6 py-3 bg-[#1a4d2e] rounded-full border border-white/10 flex items-center gap-3 shadow-lg">
+                <Banknote className="w-5 h-5 text-white" />
                 <p className="text-[10px] font-black uppercase tracking-widest">Alles vor Ort am Feld bar bezahlen</p>
               </div>
             </div>
