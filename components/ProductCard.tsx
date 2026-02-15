@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Product } from '../types';
 import { Plus, Minus, Tag, Zap } from 'lucide-react';
@@ -12,7 +11,6 @@ interface ProductCardProps {
 const ProductCard: React.FC<ProductCardProps> = ({ product, quantityInCart, onUpdateQuantity }) => {
   const isOutOfStock = product.stockQuantity === 0;
   
-  // Berechnung des angezeigten Preises
   const originalPrice = product.pricePerUnit;
   const hasDiscount = (product.discount || 0) > 0;
   const currentPrice = hasDiscount 
@@ -32,16 +30,17 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, quantityInCart, onUp
   };
 
   return (
-    <div className={`bg-white rounded-[2rem] shadow-sm border border-[#f2ede1] overflow-hidden flex flex-col transition-all hover:shadow-2xl hover:-translate-y-1 ${isOutOfStock ? 'opacity-60 grayscale-[0.3]' : ''}`}>
-      <div className="relative h-60 w-full overflow-hidden bg-[#fdfaf3]">
+    <div className={`bg-white rounded-[2.5rem] shadow-sm border border-[#f2ede1] overflow-hidden flex flex-col transition-all hover:shadow-2xl hover:-translate-y-1 ${isOutOfStock ? 'opacity-60 grayscale-[0.3]' : ''}`}>
+      <div className="relative h-64 w-full overflow-hidden bg-[#fdfaf3]">
         <img 
+          key={product.id} 
           src={product.imageUrl} 
           alt={product.name} 
-          className="w-full h-full object-cover transition-transform duration-700 hover:scale-110"
+          className="w-full h-full object-cover transition-transform duration-700 hover:scale-105"
           loading="lazy"
+          style={{ objectPosition: 'center center' }} 
         />
         
-        {/* Badges für Marketing */}
         <div className="absolute top-4 left-4 flex flex-col gap-2">
           {hasDiscount && (
             <div className="bg-orange-500 text-white px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-1 shadow-lg">
@@ -58,27 +57,27 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, quantityInCart, onUp
         {isOutOfStock && (
           <div className="absolute inset-0 bg-black/10 flex items-center justify-center backdrop-blur-[2px]">
             <span className="bg-white text-[#1a4d2e] px-5 py-2.5 text-[10px] font-black uppercase tracking-[0.2em] rounded-full shadow-2xl border border-[#1a4d2e]/10">
-              Derzeit leergeerntet
+              Alles abgeerntet!
             </span>
           </div>
         )}
       </div>
 
-      <div className="p-7 flex flex-col flex-grow">
+      <div className="p-8 flex flex-col flex-grow">
         <div className="mb-4">
           <h3 className="font-[900] text-[#121a14] text-xl leading-tight mb-1 tracking-tight uppercase">{product.name}</h3>
-          <div className="flex items-center gap-2">
-            <p className="text-[#1a4d2e] font-black text-lg flex items-center gap-1">
-              <span className="bg-[#1a4d2e]/5 px-2 py-0.5 rounded-lg border border-[#1a4d2e]/10">
-                {currentPrice.toFixed(2)} €
-              </span>
+          <div className="flex items-end gap-2">
+            <div className="flex flex-col">
               {hasDiscount && (
-                <span className="text-gray-300 line-through text-xs font-bold ml-1">
+                <span className="text-gray-300 line-through text-[10px] font-bold leading-none mb-1 tabular-nums">
                   {originalPrice.toFixed(2)} €
                 </span>
               )}
-            </p>
-            <span className="text-gray-400 font-bold text-[10px] uppercase tracking-widest">/ {product.unit}</span>
+              <p className="text-[#1a4d2e] font-black text-2xl leading-none">
+                {currentPrice.toFixed(2)} €
+              </p>
+            </div>
+            <span className="text-gray-400 font-bold text-[10px] uppercase tracking-widest mb-0.5">/ {product.unit}</span>
           </div>
         </div>
         
@@ -87,7 +86,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, quantityInCart, onUp
         )}
 
         <div className="mt-auto flex items-center justify-between gap-4">
-          <div className="flex items-center bg-[#fdfaf3] border border-[#f2ede1] rounded-2xl p-1.5 shadow-inner">
+          <div className="flex items-center bg-[#fdfaf3] border border-[#f2ede1] rounded-2xl p-1 shadow-inner">
             <button
               onClick={handleDecrement}
               disabled={quantityInCart === 0 || isOutOfStock}
@@ -109,8 +108,8 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, quantityInCart, onUp
             </button>
           </div>
 
-          <div className="text-[9px] font-black uppercase tracking-[0.15em] text-[#88a270] bg-[#88a270]/5 px-3 py-1 rounded-full border border-[#88a270]/10">
-             {isOutOfStock ? '0 auf Lager' : `${product.stockQuantity} verfügbar`}
+          <div className="text-[9px] font-black uppercase tracking-widest text-[#1a4d2e] bg-[#1a4d2e]/5 px-3 py-1 rounded-full border border-[#1a4d2e]/10">
+             {isOutOfStock ? 'Leer' : `${product.stockQuantity} am Acker`}
           </div>
         </div>
       </div>
