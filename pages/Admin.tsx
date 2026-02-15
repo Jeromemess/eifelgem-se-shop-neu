@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { ApiService, getWeekLabel } from '../services/api';
 import { Product, Order, TabView, StoreSettings } from '../types';
 import { 
-  Lock, Trash2, Edit2, Plus, LogOut, Loader2, UserCircle, CheckSquare, Square, Camera, Save, ClipboardList, ShoppingBasket, CheckCircle2, Minus, Eye, EyeOff, AlertTriangle, ArrowUp, ArrowDown, Tag, Zap
+  Lock, Trash2, Edit2, Plus, LogOut, Loader2, UserCircle, CheckSquare, Square, Camera, Save, ClipboardList, ShoppingBasket, CheckCircle2, Minus, Eye, EyeOff, AlertTriangle, ArrowUp, ArrowDown, Tag, Zap, X
 } from 'lucide-react';
 
 const ADMIN_PIN = '5719';
@@ -61,7 +61,7 @@ const Admin: React.FC = () => {
     setIsLoading(true);
     try {
       const productToSave: Product = {
-        id: currentProduct.id || Math.random().toString(36).substr(2, 9),
+        id: currentProduct.id || `prod_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
         name: currentProduct.name || 'Unbekannt',
         pricePerUnit: Number(currentProduct.pricePerUnit) || 0,
         unit: currentProduct.unit || 'Stück',
@@ -88,47 +88,32 @@ const Admin: React.FC = () => {
     
     if (targetIndex < 0 || targetIndex >= newProducts.length) return;
 
-    // Erstelle Kopien für den Tausch
-    const current = { ...newProducts[index] };
-    const target = { ...newProducts[targetIndex] };
+    // Tausche die Elemente im Array
+    const temp = newProducts[index];
+    newProducts[index] = newProducts[targetIndex];
+    newProducts[targetIndex] = temp;
 
-    // Tausche sortOrder (falls identisch, erzwinge neue Werte basierend auf Index)
-    const currentSort = current.sortOrder ?? index;
-    const targetSort = target.sortOrder ?? targetIndex;
-    
-    current.sortOrder = targetSort;
-    target.sortOrder = currentSort;
+    // Weise neue sortOrder basierend auf dem neuen Index zu (saubere Sequenz)
+    const normalizedProducts = newProducts.map((p, i) => ({
+      ...p,
+      sortOrder: i
+    }));
 
-    // Falls beide gleich waren, korrigiere sie
-    if (current.sortOrder === target.sortOrder) {
-      current.sortOrder = targetIndex;
-      target.sortOrder = index;
-    }
+    // Lokales Update für sofortiges Feedback
+    setProducts(normalizedProducts);
 
     setIsLoading(true);
     try {
-      // Speichere beide Änderungen
-      await ApiService.saveProduct(current);
-      await ApiService.saveProduct(target);
-      await loadData();
+      // Speichere die gesamte Liste in einem Rutsch (atomar)
+      await ApiService.updateAllProducts(normalizedProducts);
+      // Kein erneutes loadData nötig, da lokaler State schon korrekt ist
     } catch (err) {
       console.error(err);
-      alert("Fehler beim Sortieren.");
+      alert("Fehler beim Speichern der Sortierung.");
+      loadData(); // Reset bei Fehler
     } finally { 
       setIsLoading(false); 
     }
-  };
-
-  const handleResetOrders = async () => {
-    setIsLoading(true);
-    try {
-      await ApiService.clearAllOrders();
-      await loadData();
-      setShowResetConfirm(false);
-      alert("Alle Bestellungen wurden gelöscht. Startklar für die neue Woche!");
-    } catch (err) {
-      alert("Fehler beim Löschen.");
-    } finally { setIsLoading(false); }
   };
 
   const handleToggleVisibility = async (product: Product) => {
@@ -165,35 +150,30 @@ const Admin: React.FC = () => {
   }, [orders, products]);
 
   if (!isAuthenticated) return (
-    <div className="min-h-[80vh] flex items-center justify-center px-4 overflow-hidden">
-      <form onSubmit={handleLogin} className="bg-white p-8 rounded-[2.5rem] shadow-2xl w-full max-sm:px-6 w-full max-w-sm text-center">
+    <div className="min-h-[80vh] flex items-center justify-center px-4">
+      <form onSubmit={handleLogin} className="bg-white p-8 rounded-[2.5rem] shadow-2xl w-full max-w-sm text-center">
         <div className="w-16 h-16 bg-[#1a4d2e] text-white rounded-[1.2rem] flex items-center justify-center mx-auto mb-6 shadow-xl"><Lock className="w-8 h-8" /></div>
         <h2 className="text-2xl font-black mb-6 uppercase tracking-tighter text-black">Hof-Login</h2>
-        <input type="password" value={pin} onChange={e => setPin(e.target.value)} className="w-full p-4 bg-[#fdfbf7] border-2 border-[#f5f2e8] rounded-2xl mb-6 text-center text-3xl outline-none font-black text-black" placeholder="PIN" />
-        <button className="w-full bg-black text-white py-4 rounded-2xl font-black uppercase tracking-widest text-sm active:scale-95">Login</button>
+        <input type="password" value={pin} onChange={e => setPin(e.target.value)} className="w-full p-4 bg-[#fdfbf7] border-2 border-[#f5f2e8] rounded-2xl mb-6 text-center text-3xl outline-none font-black" placeholder="PIN" />
+        <button className="w-full bg-black text-white py-4 rounded-2xl font-black uppercase tracking-widest text-sm">Login</button>
       </form>
     </div>
   );
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8 overflow-x-hidden pb-32">
+    <div className="max-w-6xl mx-auto px-4 py-8 pb-32">
       <div className="flex justify-between items-center mb-8">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 bg-[#f5f2e8] rounded-[1rem] flex items-center justify-center text-[#1a4d2e]"><UserCircle className="w-6 h-6" /></div>
-          <div><h1 className="text-xl font-black uppercase tracking-tighter leading-none text-black">Hof-Zentrale</h1><p className="text-[#1a4d2e] text-[8px] font-black uppercase tracking-widest mt-1">Management</p></div>
+          <div><h1 className="text-xl font-black uppercase tracking-tighter leading-none text-black">Hof-Zentrale</h1></div>
         </div>
         <button onClick={() => { sessionStorage.removeItem('admin_session'); setIsAuthenticated(false); }} className="p-2 text-gray-300 hover:text-red-600 transition-colors"><LogOut className="w-5 h-5" /></button>
       </div>
 
       <div className="grid grid-cols-2 sm:flex bg-[#f5f2e8] p-1.5 rounded-[1.5rem] mb-8 gap-1.5">
-        {[
-          {id: 'orders', label: 'Packen'},
-          {id: 'products', label: 'Sortiment'},
-          {id: 'harvest', label: 'Ernteplan'},
-          {id: 'settings', label: 'Setup'}
-        ].map((t) => (
-          <button key={t.id} onClick={() => { setActiveTab(t.id as TabView); setIsEditing(false); }} className={`py-3 sm:py-4 px-3 sm:px-6 rounded-xl font-black text-[9px] sm:text-xs uppercase tracking-widest transition-all ${activeTab === t.id ? 'bg-black text-white shadow-lg' : 'text-gray-400'}`}>
-            {t.label}
+        {['orders', 'products', 'harvest', 'settings'].map((tab) => (
+          <button key={tab} onClick={() => { setActiveTab(tab as TabView); setIsEditing(false); }} className={`py-3 sm:py-4 px-3 sm:px-6 rounded-xl font-black text-[9px] sm:text-xs uppercase tracking-widest transition-all ${activeTab === tab ? 'bg-black text-white shadow-lg' : 'text-gray-400'}`}>
+            {tab === 'orders' ? 'Packen' : tab === 'products' ? 'Sortiment' : tab === 'harvest' ? 'Ernteplan' : 'Setup'}
           </button>
         ))}
       </div>
@@ -236,11 +216,16 @@ const Admin: React.FC = () => {
           <div className="space-y-6">
             {isEditing ? (
               <form onSubmit={handleSaveProduct} className="space-y-6">
-                <h3 className="text-xl font-black uppercase tracking-tighter text-black">{currentProduct.id ? 'Sorte anpassen' : 'Neu anlegen'}</h3>
-                <div onClick={() => fileInputRef.current?.click()} className="h-48 bg-[#fdfaf3] rounded-[1.5rem] border-2 border-dashed border-gray-200 flex items-center justify-center cursor-pointer overflow-hidden">
-                  {currentProduct.imageUrl ? <img src={currentProduct.imageUrl} className="w-full h-full object-cover" /> : <div className="text-center"><Camera className="w-8 h-8 mx-auto text-gray-300" /></div>}
+                <div className="flex justify-between items-center">
+                  <h3 className="text-xl font-black uppercase tracking-tighter text-black">{currentProduct.id ? 'Sorte anpassen' : 'Neu anlegen'}</h3>
+                  <button type="button" onClick={() => setIsEditing(false)} className="p-2"><X className="w-6 h-6 text-gray-400" /></button>
+                </div>
+                
+                <div onClick={() => fileInputRef.current?.click()} className="h-48 bg-[#fdfaf3] rounded-[1.5rem] border-2 border-dashed border-gray-200 flex items-center justify-center cursor-pointer overflow-hidden relative">
+                  {currentProduct.imageUrl ? <img src={currentProduct.imageUrl} className="w-full h-full object-cover" /> : <div className="text-center"><Camera className="w-8 h-8 mx-auto text-gray-300" /><p className="text-[10px] font-black uppercase mt-2">Bild wählen</p></div>}
                   <input type="file" ref={fileInputRef} onChange={e => { const file = e.target.files?.[0]; if(file) { const reader = new FileReader(); reader.onloadend = () => setCurrentProduct({...currentProduct, imageUrl: reader.result as string}); reader.readAsDataURL(file); } }} className="hidden" accept="image/*" />
                 </div>
+
                 <div className="space-y-4">
                     <input type="text" value={currentProduct.name || ''} onChange={e => setCurrentProduct({...currentProduct, name: e.target.value})} placeholder="NAME DER SORTE" className="w-full p-4 bg-[#fdfaf3] rounded-2xl font-black uppercase border-2 border-transparent focus:border-[#1a4d2e] outline-none" required />
                     
@@ -248,21 +233,20 @@ const Admin: React.FC = () => {
                       value={currentProduct.description || ''} 
                       onChange={e => setCurrentProduct({...currentProduct, description: e.target.value})} 
                       placeholder="ZUSATZ-INFO ZUM PRODUKT (Z.B. 'Nur noch 3 Stück da!')" 
-                      className="w-full p-4 bg-[#fdfaf3] rounded-2xl font-medium border-2 border-transparent focus:border-[#1a4d2e] outline-none min-h-[100px] resize-none"
+                      className="w-full p-4 bg-[#fdfaf3] rounded-2xl font-medium border-2 border-transparent focus:border-[#1a4d2e] outline-none min-h-[80px] resize-none"
                     />
 
                     <div className="grid grid-cols-2 gap-3">
                       <div className="bg-[#fdfaf3] rounded-2xl p-4">
-                        <label className="text-[8px] font-black uppercase text-gray-400 mb-1 block">Preis pro Einheit</label>
-                        <input type="number" step="0.01" value={currentProduct.pricePerUnit || ''} onChange={e => setCurrentProduct({...currentProduct, pricePerUnit: Number(e.target.value)})} className="w-full bg-transparent font-black" required />
+                        <label className="text-[8px] font-black uppercase text-gray-400 mb-1 block">Preis</label>
+                        <input type="number" step="0.01" value={currentProduct.pricePerUnit || ''} onChange={e => setCurrentProduct({...currentProduct, pricePerUnit: Number(e.target.value)})} className="w-full bg-transparent font-black outline-none" required />
                       </div>
                       <div className="bg-[#fdfaf3] rounded-2xl p-4">
                         <label className="text-[8px] font-black uppercase text-gray-400 mb-1 block">Einheit</label>
-                        <input type="text" value={currentProduct.unit || ''} onChange={e => setCurrentProduct({...currentProduct, unit: e.target.value})} className="w-full bg-transparent font-black uppercase" required />
+                        <input type="text" value={currentProduct.unit || ''} onChange={e => setCurrentProduct({...currentProduct, unit: e.target.value})} className="w-full bg-transparent font-black uppercase outline-none" required />
                       </div>
                     </div>
 
-                    {/* RABATT UND 1+1 GRATIS WIEDER DABEI */}
                     <div className="p-4 bg-[#1a4d2e]/5 rounded-2xl border border-[#1a4d2e]/10 flex flex-col sm:flex-row gap-4">
                       <div className="flex-1">
                         <label className="text-[8px] font-black uppercase tracking-widest text-[#1a4d2e] mb-1 block">Rabatt %</label>
@@ -271,10 +255,10 @@ const Admin: React.FC = () => {
                           <input type="number" value={currentProduct.discount || 0} onChange={e => setCurrentProduct({...currentProduct, discount: Number(e.target.value)})} className="w-full p-2 pl-8 bg-white rounded-lg font-black text-sm outline-none border border-transparent focus:border-[#1a4d2e]" />
                         </div>
                       </div>
-                      <div className="flex-1 flex flex-col justify-end">
+                      <div className="flex-1">
                         <label className="text-[8px] font-black uppercase tracking-widest text-[#1a4d2e] mb-1 block">Sonderaktion</label>
-                        <button type="button" onClick={() => setCurrentProduct({...currentProduct, isBogo: !currentProduct.isBogo})} className={`w-full py-2.5 rounded-lg font-black text-[9px] uppercase tracking-widest border-2 transition-all flex items-center justify-center gap-2 ${currentProduct.isBogo ? 'bg-[#1a4d2e] text-white border-transparent shadow-md' : 'bg-white text-gray-400 border-gray-100'}`}>
-                          <Zap className={`w-3 h-3 ${currentProduct.isBogo ? 'fill-current' : ''}`} /> 1+1 Gratis
+                        <button type="button" onClick={() => setCurrentProduct({...currentProduct, isBogo: !currentProduct.isBogo})} className={`w-full py-2.5 rounded-lg font-black text-[9px] uppercase tracking-widest border-2 transition-all flex items-center justify-center gap-2 ${currentProduct.isBogo ? 'bg-[#1a4d2e] text-white border-transparent' : 'bg-white text-gray-400 border-gray-100'}`}>
+                          <Zap className="w-3 h-3" /> 1+1 Gratis
                         </button>
                       </div>
                     </div>
@@ -284,39 +268,24 @@ const Admin: React.FC = () => {
                         <input type="number" value={currentProduct.stockQuantity || 0} onChange={e => setCurrentProduct({...currentProduct, stockQuantity: Number(e.target.value)})} className="w-full bg-transparent text-2xl font-black outline-none" />
                     </div>
                 </div>
-                <div className="flex gap-3">
-                  <button type="button" onClick={() => setIsEditing(false)} className="flex-1 py-4 bg-gray-100 rounded-2xl font-black uppercase text-[10px]">Abbruch</button>
-                  <button type="submit" className="flex-1 py-4 bg-[#1a4d2e] text-white rounded-2xl font-black uppercase text-[10px] flex items-center justify-center gap-2"><Save className="w-4 h-4" /> Speichern</button>
-                </div>
+                <button type="submit" disabled={isLoading} className="w-full py-5 bg-[#1a4d2e] text-white rounded-2xl font-black uppercase tracking-widest text-sm flex items-center justify-center gap-2 shadow-xl active:scale-95 transition-all">
+                  {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Save className="w-5 h-5" /> Sorte Speichern</>}
+                </button>
               </form>
             ) : (
               <>
                 <div className="flex justify-between items-center">
-                  <h3 className="font-black text-xl uppercase tracking-tighter text-black">Sortiment</h3>
+                  <h3 className="font-black text-xl uppercase tracking-tighter text-black">Sortiment ({products.length})</h3>
                   <button onClick={() => { setCurrentProduct({ isActive: true, unit: 'Stück', stockQuantity: 10, discount: 0, isBogo: false, description: '' }); setIsEditing(true); }} className="bg-black text-white px-4 py-3 rounded-xl font-black text-[9px] uppercase flex items-center gap-2">
-                    <Plus className="w-3 h-3" /> Neu
+                    <Plus className="w-3 h-3" /> Neu hinzufügen
                   </button>
                 </div>
                 <div className="grid grid-cols-1 gap-4">
                   {products.map((p, idx) => (
                     <div key={p.id} className="border-2 rounded-[1.5rem] bg-[#fdfbf7] border-[#f5f2e8] p-4 flex gap-4 items-center group">
                       <div className="flex flex-col gap-1">
-                        <button 
-                          type="button"
-                          onClick={() => handleMoveProduct(idx, 'up')} 
-                          disabled={idx === 0 || isLoading} 
-                          className="p-1.5 hover:text-[#1a4d2e] disabled:text-gray-200 transition-colors"
-                        >
-                          <ArrowUp className="w-5 h-5" />
-                        </button>
-                        <button 
-                          type="button"
-                          onClick={() => handleMoveProduct(idx, 'down')} 
-                          disabled={idx === products.length - 1 || isLoading} 
-                          className="p-1.5 hover:text-[#1a4d2e] disabled:text-gray-200 transition-colors"
-                        >
-                          <ArrowDown className="w-5 h-5" />
-                        </button>
+                        <button type="button" onClick={() => handleMoveProduct(idx, 'up')} disabled={idx === 0 || isLoading} className="p-1.5 hover:text-[#1a4d2e] disabled:text-gray-200 transition-colors"><ArrowUp className="w-5 h-5" /></button>
+                        <button type="button" onClick={() => handleMoveProduct(idx, 'down')} disabled={idx === products.length - 1 || isLoading} className="p-1.5 hover:text-[#1a4d2e] disabled:text-gray-200 transition-colors"><ArrowDown className="w-5 h-5" /></button>
                       </div>
                       <img src={p.imageUrl} className="w-16 h-16 rounded-xl object-cover shadow-sm" />
                       <div className="flex-1 min-w-0">
@@ -328,8 +297,8 @@ const Admin: React.FC = () => {
                         </div>
                       </div>
                       <div className="flex gap-2">
-                        <button onClick={() => handleToggleVisibility(p)} className={`p-3 bg-white border rounded-xl shadow-sm transition-colors ${p.isActive ? 'text-[#1a4d2e]' : 'text-gray-300'}`}>{p.isActive ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}</button>
-                        <button onClick={() => { setCurrentProduct(p); setIsEditing(true); }} className="p-3 bg-white border rounded-xl shadow-sm hover:border-[#1a4d2e] transition-colors"><Edit2 className="w-4 h-4" /></button>
+                        <button onClick={() => handleToggleVisibility(p)} className={`p-3 bg-white border rounded-xl shadow-sm ${p.isActive ? 'text-[#1a4d2e]' : 'text-gray-300'}`}>{p.isActive ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}</button>
+                        <button onClick={() => { setCurrentProduct(p); setIsEditing(true); }} className="p-3 bg-white border rounded-xl shadow-sm"><Edit2 className="w-4 h-4" /></button>
                       </div>
                     </div>
                   ))}
@@ -365,15 +334,10 @@ const Admin: React.FC = () => {
         {activeTab === 'settings' && (
           <div className="max-w-xl mx-auto space-y-8 py-4 text-center">
             <h4 className="font-black text-xl uppercase tracking-tighter text-black">Setup & Verwaltung</h4>
-            <div className="space-y-6">
+            <div className="space-y-6 text-left">
                 <div className="p-6 bg-[#fdfaf3] rounded-3xl border border-[#f5f2e8]">
                   <label className="text-[10px] font-black uppercase text-gray-400 mb-4 block">Nächster Abholtermin</label>
-                  <input 
-                    type="date" 
-                    value={settings.currentPickupDate} 
-                    onChange={e => setSettings({...settings, currentPickupDate: e.target.value})} 
-                    className="w-full p-4 rounded-2xl font-black outline-none border-2 border-transparent focus:border-[#1a4d2e] bg-white text-center" 
-                  />
+                  <input type="date" value={settings.currentPickupDate} onChange={e => setSettings({...settings, currentPickupDate: e.target.value})} className="w-full p-4 rounded-2xl font-black outline-none border-2 border-transparent focus:border-[#1a4d2e] bg-white text-center" />
                 </div>
             </div>
             
@@ -381,21 +345,17 @@ const Admin: React.FC = () => {
 
             <div className="pt-10 border-t-4 border-red-500/10 mt-10">
               <div className="bg-red-50/30 p-8 rounded-[2.5rem] border border-red-100">
-                <p className="text-[10px] font-black uppercase text-red-500 mb-6 tracking-widest flex items-center justify-center gap-2">
-                  <AlertTriangle className="w-4 h-4" /> Neue Woche starten
-                </p>
+                <p className="text-[10px] font-black uppercase text-red-500 mb-6 tracking-widest flex items-center justify-center gap-2"><AlertTriangle className="w-4 h-4" /> Neue Woche starten</p>
                 {showResetConfirm ? (
-                  <div className="bg-white p-6 rounded-3xl border-2 border-red-200 animate-in zoom-in-95 shadow-xl">
+                  <div className="bg-white p-6 rounded-3xl border-2 border-red-200 shadow-xl">
                     <p className="text-[11px] font-black text-red-800 mb-4 uppercase tracking-tighter">Wirklich alle Bestellungen löschen?</p>
                     <div className="flex gap-2">
                       <button onClick={() => setShowResetConfirm(false)} className="flex-1 py-4 bg-gray-50 border border-gray-200 rounded-xl font-black text-[9px] uppercase">Abbruch</button>
-                      <button onClick={handleResetOrders} className="flex-1 py-4 bg-red-600 text-white rounded-xl font-black text-[9px] uppercase shadow-lg shadow-red-200">Ja, Liste leeren</button>
+                      <button onClick={async () => { await ApiService.clearAllOrders(); await loadData(); setShowResetConfirm(false); }} className="flex-1 py-4 bg-red-600 text-white rounded-xl font-black text-[9px] uppercase shadow-lg shadow-red-200">Ja, Liste leeren</button>
                     </div>
                   </div>
                 ) : (
-                  <button onClick={() => setShowResetConfirm(true)} className="w-full bg-white border-2 border-red-200 text-red-600 hover:bg-red-600 hover:text-white py-5 rounded-2xl font-black uppercase tracking-widest text-[9px] flex items-center justify-center gap-3 transition-all">
-                    <Trash2 className="w-4 h-4" /> Wöchentliche Bestellungen löschen
-                  </button>
+                  <button onClick={() => setShowResetConfirm(true)} className="w-full bg-white border-2 border-red-200 text-red-600 hover:bg-red-600 hover:text-white py-5 rounded-2xl font-black uppercase tracking-widest text-[9px] flex items-center justify-center gap-3 transition-all"><Trash2 className="w-4 h-4" /> Wöchentliche Bestellungen löschen</button>
                 )}
               </div>
             </div>
