@@ -1,9 +1,10 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
 import { ApiService, getWeekLabel } from '../services/api';
 import { Product, Customer, OrderItem, Order, StoreSettings } from '../types';
-import { Loader2, X, ArrowRight, Calendar, UserPlus, ShoppingCart, History, ShoppingBag, Banknote, Sprout } from 'lucide-react';
+import { Loader2, X, ArrowRight, Calendar, UserPlus, ShoppingCart, History, ShoppingBag, Banknote } from 'lucide-react';
 
 const Shop: React.FC = () => {
   const navigate = useNavigate();
@@ -36,9 +37,11 @@ const Shop: React.FC = () => {
         setSettings(storeSettings);
 
         if (user) {
+          // WICHTIG: Die Woche muss exakt mit der Woche der Bestellung übereinstimmen
           const week = storeSettings.currentPickupDate 
             ? getWeekLabel(new Date(storeSettings.currentPickupDate)) 
             : getWeekLabel(new Date());
+          
           const prev = await ApiService.getOrdersForUser(`${user.firstName} ${user.lastName}`, week);
           setPreviousOrder(prev);
         }
@@ -51,13 +54,6 @@ const Shop: React.FC = () => {
     loadInitialData();
     return () => { active = false; };
   }, []);
-
-  const formattedPickupDate = useMemo(() => {
-    if (!settings?.currentPickupDate) return "Bald";
-    return new Date(settings.currentPickupDate).toLocaleDateString('de-DE', {
-      weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric'
-    });
-  }, [settings]);
 
   const calculateTotalToPay = (product: Product, quantity: number): number => {
     let price = product.pricePerUnit;
@@ -137,7 +133,6 @@ const Shop: React.FC = () => {
 
   return (
     <div className="pb-40 max-w-5xl mx-auto px-4 py-12">
-      {/* Hero Section mit gewünschtem Text */}
       <div className="text-center mb-16 mt-8">
         <h2 className="text-4xl md:text-7xl font-[900] text-[#121a14] mb-4 tracking-tighter leading-[0.9]">
           Frisches Gemüse.<br/>
@@ -145,17 +140,13 @@ const Shop: React.FC = () => {
         </h2>
         
         <div className="max-w-xl mx-auto mb-10">
-          <p className="text-lg font-bold text-gray-500 mb-6 italic">
-            Nächster Verkauf: <span className="text-[#1a4d2e] not-italic">{formattedPickupDate}</span>
+          <p className="text-xl font-bold text-gray-900 mb-6 italic">
+            Nächste Ernte: <span className="text-[#1a4d2e] not-italic">Donnerstag, 19.02.2026</span>
           </p>
-          <div className="h-1 w-12 bg-[#1a4d2e] mx-auto rounded-full mb-6"></div>
-          <p className="text-sm font-black text-[#121a14] uppercase tracking-widest leading-relaxed">
-            Stöbere durch unsere Ernte und<br/>reserviere deine Auswahl.
-          </p>
+          <div className="h-1.5 w-16 bg-[#1a4d2e] mx-auto rounded-full"></div>
         </div>
       </div>
 
-      {/* Produkt-Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
         {products.map(product => (
           <ProductCard
@@ -167,7 +158,6 @@ const Shop: React.FC = () => {
         ))}
       </div>
 
-      {/* Sticky Bottom Button */}
       {cartCount > 0 && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 w-full max-w-xs px-4">
           <button onClick={() => setIsCheckoutOpen(true)} className="w-full bg-[#121a14] text-white p-2 rounded-full shadow-2xl flex items-center justify-between border border-white/10 transition-all hover:scale-105 active:scale-95">
@@ -175,13 +165,12 @@ const Shop: React.FC = () => {
               <div className="bg-[#1a4d2e] text-white w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-black">{cartCount}</div>
             </div>
             <div className="bg-[#1a4d2e] text-white py-3 px-8 rounded-full font-black text-[10px] uppercase tracking-widest flex items-center gap-2">
-              {previousOrder ? 'Zur bestehenden Kiste hinzufügen' : 'Beute sichern'} <ArrowRight className="w-3 h-3" />
+              {previousOrder ? 'Zu meiner Ernte hinzufügen' : 'Beute sichern'} <ArrowRight className="w-3 h-3" />
             </div>
           </button>
         </div>
       )}
 
-      {/* Checkout Overlay */}
       {isCheckoutOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-[#121a14]/80 backdrop-blur-md" onClick={() => !isSubmitting && setIsCheckoutOpen(false)} />
@@ -195,7 +184,6 @@ const Shop: React.FC = () => {
             </div>
 
             <div className="space-y-6 mb-10">
-              {/* Bereich: Vorherige Bestellung */}
               {previousOrder && (
                 <div className="bg-gray-50 border-2 border-dashed border-gray-200 rounded-[2rem] p-6 opacity-60">
                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
@@ -212,7 +200,6 @@ const Shop: React.FC = () => {
                 </div>
               )}
 
-              {/* Bereich: Aktuelle Auswahl */}
               <div className="bg-[#fdfaf3] rounded-[2rem] p-8 border-2 border-[#1a4d2e]/10">
                 <p className="text-[10px] font-black text-[#1a4d2e] uppercase tracking-widest mb-6 flex items-center gap-2">
                   <ShoppingCart className="w-4 h-4" /> {previousOrder ? 'Gerade hinzugefügt:' : 'Deine Auswahl:'}
