@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Product } from '../types';
 import { Plus, Minus, Tag, Zap } from 'lucide-react';
@@ -66,6 +67,14 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, quantityInCart, onUp
       <div className="p-8 flex flex-col flex-grow">
         <div className="mb-4">
           <h3 className="font-[900] text-[#121a14] text-xl leading-tight mb-1 tracking-tight uppercase">{product.name}</h3>
+          
+          {/* HIER IST DIE BESCHREIBUNG/INFO */}
+          {product.description && (
+            <p className="text-[#1a4d2e] text-[10px] font-bold uppercase tracking-widest mb-2 italic">
+              {product.description}
+            </p>
+          )}
+
           <div className="flex items-end gap-2">
             <div className="flex flex-col">
               {(hasDiscount || product.isBogo) && (
@@ -81,10 +90,6 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, quantityInCart, onUp
           </div>
         </div>
         
-        {product.description && (
-          <p className="text-gray-500 text-xs leading-relaxed mb-6 line-clamp-2 font-medium">{product.description}</p>
-        )}
-
         <div className="mt-auto flex items-center justify-between gap-4">
           <div className="flex items-center bg-[#fdfaf3] border border-[#f2ede1] rounded-2xl p-1 shadow-inner">
             <button
