@@ -1,9 +1,10 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
 import { ApiService, getWeekLabel } from '../services/api';
 import { Product, Customer, OrderItem, Order, StoreSettings } from '../types';
-import { Loader2, X, ArrowRight, Calendar, UserPlus, ShoppingCart, History, Plus, AlertCircle, Sprout, ShoppingBag, Banknote } from 'lucide-react';
+import { Loader2, X, ArrowRight, Calendar, UserPlus, ShoppingCart, History, ShoppingBag, Banknote } from 'lucide-react';
 
 const Shop: React.FC = () => {
   const navigate = useNavigate();
@@ -12,7 +13,6 @@ const Shop: React.FC = () => {
   const [settings, setSettings] = useState<StoreSettings | null>(null);
   const [cart, setCart] = useState<Record<string, number>>({});
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [previousOrder, setPreviousOrder] = useState<Order | null>(null);
@@ -44,7 +44,7 @@ const Shop: React.FC = () => {
           setPreviousOrder(prev);
         }
       } catch (err: any) {
-        setError("Die Verbindung zum Acker hakt gerade etwas.");
+        console.error("Fehler beim Laden:", err);
       } finally {
         if (active) setIsLoading(false);
       }
@@ -97,14 +97,14 @@ const Shop: React.FC = () => {
     try {
       let user = currentUser;
       if (!user) {
-        if (!firstName || !lastName) throw new Error("Wer bist du? Name fehlt!");
+        if (!firstName || !lastName) throw new Error("Name fehlt!");
         user = await ApiService.login(firstName, lastName);
         setCurrentUser(user);
       }
       
       const newItems: OrderItem[] = Object.entries(cart).map(([productId, quantity]) => {
         const p = products.find(prod => prod.id === productId);
-        if (!p) throw new Error("Das Gemüse ist wohl gerade weggerannt.");
+        if (!p) throw new Error("Produkt nicht gefunden.");
         const paidQty = Number(quantity);
         const physicalQty = p.isBogo ? paidQty * 2 : paidQty;
         const totalLinePrice = calculateTotalToPay(p, paidQty);
@@ -138,14 +138,12 @@ const Shop: React.FC = () => {
         <h2 className="text-4xl md:text-7xl font-[900] text-[#121a14] mb-4 tracking-tighter leading-[0.9]">
           Eifel<span className="text-[#1a4d2e]">gemüse</span>
         </h2>
-        
         {formattedPickupDate && (
           <div className="inline-flex items-center gap-2 bg-[#1a4d2e] text-white px-6 py-3 rounded-full font-black text-[11px] uppercase tracking-widest shadow-xl mb-10 border-2 border-white/20">
             <Calendar className="w-4 h-4" />
             Nächste Ernte: {formattedPickupDate}
           </div>
         )}
-        <p className="text-gray-400 font-black text-[10px] uppercase tracking-[0.4em]">Frisch vom Acker reservieren</p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
@@ -185,7 +183,6 @@ const Shop: React.FC = () => {
             </div>
 
             <div className="space-y-6 mb-10">
-              {/* VORHERIGE BESTELLUNG IM CHECKOUT (SUBTIL GRAU) */}
               {previousOrder && (
                 <div className="bg-gray-50 border-2 border-dashed border-gray-200 rounded-[2rem] p-6 opacity-60">
                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
@@ -202,7 +199,6 @@ const Shop: React.FC = () => {
                 </div>
               )}
 
-              {/* NEUE ARTIKEL IM CHECKOUT (KRÄFTIG GRÜN) */}
               <div className="bg-[#fdfaf3] rounded-[2rem] p-8 border-2 border-[#1a4d2e]/10">
                 <p className="text-[10px] font-black text-[#1a4d2e] uppercase tracking-widest mb-6 flex items-center gap-2">
                   <ShoppingCart className="w-4 h-4" /> {previousOrder ? 'Gerade hinzugefügt:' : 'Deine Auswahl:'}
@@ -213,7 +209,7 @@ const Shop: React.FC = () => {
                     if (!p) return null;
                     const lineTotal = calculateTotalToPay(p, Number(qty));
                     const originalTotal = p.pricePerUnit * Number(qty);
-                    const isDiscounted = (p.discount || 0) > 0;
+                    const isDiscounted = (p.discount || 0) > 0 || p.isBogo;
 
                     return (
                       <div key={id} className="flex justify-between items-center text-xl font-black text-[#121a14]">
@@ -235,7 +231,6 @@ const Shop: React.FC = () => {
                   })}
                 </div>
                 
-                {/* PREIS-ZUSAMMENFASSUNG */}
                 <div className="pt-6 border-t border-gray-200 space-y-2">
                    {previousOrder && (
                      <>
@@ -274,7 +269,6 @@ const Shop: React.FC = () => {
                 <div className="bg-[#1a4d2e]/5 p-6 rounded-2xl border border-[#1a4d2e]/10 text-center relative">
                   <button type="button" onClick={handleSwitchUser} className="absolute top-4 right-4 text-[#1a4d2e] hover:text-black transition-colors" title="Nutzer wechseln"><UserPlus className="w-4 h-4" /></button>
                   <p className="text-xl font-black uppercase tracking-tight">{currentUser.firstName} {currentUser.lastName}</p>
-                  <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-1">Packen wir es in deine Kiste!</p>
                 </div>
               )}
               <button type="submit" disabled={isSubmitting} className="w-full bg-[#1a4d2e] text-white py-6 rounded-2xl font-black uppercase tracking-widest shadow-xl flex items-center justify-center gap-3 hover:bg-black transition-all active:scale-95">
