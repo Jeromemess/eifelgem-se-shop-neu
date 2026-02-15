@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Product } from '../types';
 import { Plus, Minus, Tag, Zap } from 'lucide-react';
@@ -57,7 +58,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, quantityInCart, onUp
         {isOutOfStock && (
           <div className="absolute inset-0 bg-black/10 flex items-center justify-center backdrop-blur-[2px]">
             <span className="bg-white text-[#1a4d2e] px-5 py-2.5 text-[10px] font-black uppercase tracking-[0.2em] rounded-full shadow-2xl border border-[#1a4d2e]/10">
-              Alles abgeerntet!
+              Abgeerntet!
             </span>
           </div>
         )}
@@ -90,24 +91,19 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, quantityInCart, onUp
             <button
               onClick={handleDecrement}
               disabled={quantityInCart === 0 || isOutOfStock}
-              className="w-10 h-10 rounded-xl flex items-center justify-center text-gray-400 hover:text-[#1a4d2e] hover:bg-white disabled:opacity-20 transition-all active:scale-90"
+              className="w-10 h-10 rounded-xl flex items-center justify-center text-gray-400 hover:text-[#1a4d2e] hover:bg-white transition-all active:scale-90"
             >
               <Minus className="w-4 h-4" />
             </button>
-            
-            <span className="font-black text-lg text-[#121a14] w-10 text-center tabular-nums">
-              {quantityInCart}
-            </span>
-
+            <span className="font-black text-lg text-[#121a14] w-10 text-center tabular-nums">{quantityInCart}</span>
             <button
               onClick={handleIncrement}
               disabled={quantityInCart >= product.stockQuantity || isOutOfStock}
-              className="w-10 h-10 rounded-xl flex items-center justify-center text-gray-400 hover:text-[#1a4d2e] hover:bg-white disabled:opacity-20 transition-all active:scale-90"
+              className="w-10 h-10 rounded-xl flex items-center justify-center text-gray-400 hover:text-[#1a4d2e] hover:bg-white transition-all active:scale-90"
             >
               <Plus className="w-4 h-4" />
             </button>
           </div>
-
           <div className="text-[9px] font-black uppercase tracking-widest text-[#1a4d2e] bg-[#1a4d2e]/5 px-3 py-1 rounded-full border border-[#1a4d2e]/10">
              {isOutOfStock ? 'Leer' : `${product.stockQuantity} am Acker`}
           </div>
