@@ -1,12 +1,27 @@
-
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { Product, Order, StoreSettings, Customer, OrderItem } from '../types';
 
-const SUPABASE_URL = (import.meta as any).env?.VITE_SUPABASE_URL || '';
-const SUPABASE_ANON_KEY = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || '';
+/**
+ * Hilfsfunktion für den Zugriff auf Umgebungsvariablen.
+ * Castet import.meta zu any, um TypeScript-Fehler in verschiedenen Umgebungen zu vermeiden.
+ */
+const getEnvVar = (key: string): string => {
+  return (import.meta as any).env?.[key] || '';
+};
 
-const isConfigured = SUPABASE_URL.length > 10 && SUPABASE_ANON_KEY.length > 10;
-const supabase = isConfigured ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+const SUPABASE_URL = getEnvVar('VITE_SUPABASE_URL');
+const SUPABASE_ANON_KEY = getEnvVar('VITE_SUPABASE_ANON_KEY');
+
+const isValidConfig = SUPABASE_URL.startsWith('http') && SUPABASE_ANON_KEY.length > 20;
+
+let supabase: SupabaseClient | null = null;
+if (isValidConfig) {
+  try {
+    supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  } catch (e) {
+    console.error("Supabase konnte nicht initialisiert werden:", e);
+  }
+}
 
 const STORAGE_KEYS = {
   CURRENT_USER: 'eifel_gemuese_auth',
@@ -44,11 +59,12 @@ export const getWeekLabel = (date: Date): string => {
   return `KW ${weekNo}/${d.getUTCFullYear()}`;
 };
 
-const DAY_MAP: Record<string, number> = { 'Sonntag': 0, 'Montag': 1, 'Dienstag': 2, 'Mittwoch': 3, 'Donnerstag': 4, 'Freitag': 5, 'Samstag': 6 };
+const DAY_MAP: Record<string, number> = { 
+  'Sonntag': 0, 'Montag': 1, 'Dienstag': 2, 'Mittwoch': 3, 'Donnerstag': 4, 'Freitag': 5, 'Samstag': 6 
+};
 
 export const ApiService = {
   async isShopOpen() {
-    if (!isConfigured) return { isOpen: true };
     try {
       const settings = await this.getSettings();
       const now = new Date();
@@ -74,8 +90,14 @@ export const ApiService = {
   },
 
   async login(firstName: string, lastName: string) {
-    if (!supabase) throw new Error("Supabase nicht konfiguriert!");
-    const { data: existing } = await supabase.from('customers').select('*').ilike('first_name', firstName).ilike('last_name', lastName);
+    if (!supabase) throw new Error("Datenbank nicht konfiguriert.");
+    
+    const { data: existing } = await supabase
+      .from('customers')
+      .select('*')
+      .ilike('first_name', firstName)
+      .ilike('last_name', lastName);
+
     let customer: Customer;
     if (existing && existing.length > 0) {
       customer = {
@@ -86,7 +108,12 @@ export const ApiService = {
         status: 'active'
       };
     } else {
-      const { data: neu, error } = await supabase.from('customers').insert([{ first_name: firstName, last_name: lastName }]).select().single();
+      const { data: neu, error } = await supabase
+        .from('customers')
+        .insert([{ first_name: firstName, last_name: lastName }])
+        .select()
+        .single();
+      
       if (error) throw error;
       customer = {
         id: neu.id,
@@ -108,7 +135,7 @@ export const ApiService = {
   },
 
   async saveProduct(p: Product) {
-    if (!supabase) throw new Error("Keine DB-Verbindung");
+    if (!supabase) throw new Error("Keine Datenbank-Verbindung");
     const dbProduct: any = {
       name: p.name,
       price_per_unit: Number(p.pricePerUnit),
@@ -149,7 +176,7 @@ export const ApiService = {
   },
 
   async submitOrder(customer: Customer, items: OrderItem[], total: number, week: string) {
-    if (!supabase) throw new Error("Keine Verbindung");
+    if (!supabase) throw new Error("Datenbank nicht erreichbar");
     const settings = await this.getSettings();
     const finalWeek = settings.currentPickupDate ? getWeekLabel(new Date(settings.currentPickupDate)) : week;
     const customerFullName = `${customer.firstName} ${customer.lastName}`;
@@ -158,13 +185,11 @@ export const ApiService = {
 
     let resultOrder: Order;
     if (existingOrder) {
-      // Zusammenführen der Items
       const mergedItems = [...existingOrder.items];
       items.forEach(newItem => {
         const existingItem = mergedItems.find(mi => mi.productId === newItem.productId);
         if (existingItem) {
           existingItem.quantity += newItem.quantity;
-          // Preis anpassen falls sich was geändert hat (Gewichtung)
           existingItem.priceAtOrder = newItem.priceAtOrder;
         } else {
           mergedItems.push(newItem);
@@ -174,7 +199,7 @@ export const ApiService = {
       const { data, error } = await supabase.from('orders')
         .update({
           items: mergedItems,
-          total_amount: existingOrder.totalAmount + total
+          total_amount: Number((existingOrder.totalAmount + total).toFixed(2))
         })
         .eq('id', existingOrder.id)
         .select()
@@ -187,14 +212,13 @@ export const ApiService = {
         customer_name: customerFullName,
         week_label: finalWeek,
         items: items,
-        total_amount: total
+        total_amount: Number(total.toFixed(2))
       }]).select().single();
       
       if (error) throw error;
       resultOrder = mapOrder(data);
     }
 
-    // Bestand abziehen
     for (const item of items) {
       const { data: prod } = await supabase.from('products').select('stock_quantity').eq('id', item.productId).single();
       if (prod) {
@@ -206,10 +230,12 @@ export const ApiService = {
   },
 
   async getSettings(): Promise<StoreSettings> {
-    const fallback: StoreSettings = { pickupDay: 'Mittwoch', pickupTime: '17:00', openDay: 'Sonntag', maxSlots: 50, currentPickupDate: '' };
+    const fallback: StoreSettings = { 
+      pickupDay: 'Mittwoch', pickupTime: '17:00', openDay: 'Sonntag', maxSlots: 50, currentPickupDate: '' 
+    };
     if (!supabase) return fallback;
-    const { data } = await supabase.from('settings').select('*').eq('id', 1).maybeSingle();
-    if (!data) return fallback;
+    const { data, error } = await supabase.from('settings').select('*').eq('id', 1).maybeSingle();
+    if (error || !data) return fallback;
     return {
       pickupDay: data.pickup_day || 'Mittwoch',
       pickupTime: data.pickup_time || '17:00',
