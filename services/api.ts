@@ -32,30 +32,6 @@ const MOCK_PRODUCTS: Product[] = [
     description: 'Beste Eifeler Knollen. Halten ewig, schmecken immer.',
     discount: 0,
     sortOrder: 0
-  },
-  {
-    id: 'p2',
-    name: 'Knack-Möhren',
-    pricePerUnit: 2.20,
-    unit: 'Bund',
-    imageUrl: 'https://images.unsplash.com/photo-1598170845058-32b9d6a5da37?w=500',
-    stockQuantity: 25,
-    isActive: true,
-    description: 'So orange, dass man eine Sonnenbrille braucht.',
-    discount: 10,
-    sortOrder: 1
-  },
-  {
-    id: 'p3',
-    name: 'Acker-Salat',
-    pricePerUnit: 1.80,
-    unit: 'Kopf',
-    imageUrl: 'https://images.unsplash.com/photo-1556801712-76c82666701d?w=500',
-    stockQuantity: 8,
-    isActive: true,
-    description: 'Frischer geht nur, wenn man ihn selbst ausbuddelt.',
-    isBogo: true,
-    sortOrder: 2
   }
 ];
 
@@ -75,7 +51,7 @@ export const ApiService = {
       pickupTime: '17:00', 
       openDay: 'Sonntag', 
       maxSlots: 50, 
-      currentPickupDate: '2026-02-19' 
+      currentPickupDate: new Date().toISOString().split('T')[0]
     };
 
     if (!supabase) {
@@ -99,8 +75,60 @@ export const ApiService = {
       let products: Product[] = stored ? JSON.parse(stored) : MOCK_PRODUCTS;
       return products.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
     }
-    const { data } = await supabase.from('products').select('*').order('sort_order');
+    const { data, error } = await supabase.from('products').select('*').order('sort_order', { ascending: true });
+    if (error) console.error("Supabase Fetch Error:", error);
     return (data || []).map(mapProduct);
+  },
+
+  async saveProduct(p: Product) {
+    if (supabase) {
+      const payload = {
+        id: p.id,
+        name: p.name,
+        price_per_unit: p.pricePerUnit,
+        unit: p.unit,
+        image_url: p.imageUrl,
+        stock_quantity: p.stockQuantity,
+        is_active: p.isActive,
+        description: p.description,
+        discount: p.discount,
+        is_bogo: p.isBogo,
+        sort_order: p.sortOrder
+      };
+      const { error } = await supabase.from('products').upsert(payload);
+      if (error) throw error;
+    } else {
+      const products = await this.getProducts();
+      const idx = products.findIndex(prod => prod.id === p.id);
+      if (idx > -1) {
+        products[idx] = p;
+      } else {
+        products.push(p);
+      }
+      localStorage.setItem('eifel_gemuese_products_mock', JSON.stringify(products));
+    }
+  },
+
+  async updateAllProducts(products: Product[]) {
+    if (supabase) {
+      const payloads = products.map(p => ({
+        id: p.id,
+        name: p.name,
+        price_per_unit: p.pricePerUnit,
+        unit: p.unit,
+        image_url: p.imageUrl,
+        stock_quantity: p.stockQuantity,
+        is_active: p.isActive,
+        description: p.description,
+        discount: p.discount,
+        is_bogo: p.isBogo,
+        sort_order: p.sortOrder
+      }));
+      const { error } = await supabase.from('products').upsert(payloads);
+      if (error) throw error;
+    } else {
+      localStorage.setItem('eifel_gemuese_products_mock', JSON.stringify(products));
+    }
   },
 
   async getCurrentUser(): Promise<Customer | null> {
@@ -123,7 +151,6 @@ export const ApiService = {
     if (!ordersStr) return null;
     const orders: Order[] = JSON.parse(ordersStr);
     const normalizedSearchName = customerName.toLowerCase().trim();
-    // WICHTIG: Suche nach Kunde UND Woche
     return orders.find(o => o.customerName.toLowerCase().trim() === normalizedSearchName && o.weekLabel === weekLabel) || null;
   },
 
@@ -131,7 +158,6 @@ export const ApiService = {
     const fullName = `${customer.firstName} ${customer.lastName}`;
     const ordersStr = localStorage.getItem('eifel_gemuese_orders_mock');
     let orders: Order[] = ordersStr ? JSON.parse(ordersStr) : [];
-    
     const existingOrderIndex = orders.findIndex(o => o.customerName.toLowerCase().trim() === fullName.toLowerCase().trim() && o.weekLabel === week);
     
     let finalOrder: Order;
@@ -140,61 +166,17 @@ export const ApiService = {
       const mergedItems = [...existingOrder.items];
       newItems.forEach(newItem => {
         const found = mergedItems.find(m => m.productId === newItem.productId);
-        if (found) {
-          found.quantity += newItem.quantity;
-        } else {
-          mergedItems.push(newItem);
-        }
+        if (found) found.quantity += newItem.quantity;
+        else mergedItems.push(newItem);
       });
-      
-      finalOrder = {
-        ...existingOrder,
-        items: mergedItems,
-        totalAmount: totalAmount
-      };
+      finalOrder = { ...existingOrder, items: mergedItems, totalAmount: totalAmount };
       orders[existingOrderIndex] = finalOrder;
     } else {
-      finalOrder = {
-        id: Math.random().toString(36).substr(2, 9),
-        customerName: fullName,
-        createdAt: new Date().toISOString(),
-        weekLabel: week,
-        items: newItems,
-        totalAmount: totalAmount
-      };
+      finalOrder = { id: Math.random().toString(36).substr(2, 9), customerName: fullName, createdAt: new Date().toISOString(), weekLabel: week, items: newItems, totalAmount: totalAmount };
       orders.push(finalOrder);
     }
-    
     localStorage.setItem('eifel_gemuese_orders_mock', JSON.stringify(orders));
     return finalOrder;
-  },
-
-  async saveProduct(p: Product) {
-    if (supabase) {
-      const payload = {
-        name: p.name,
-        price_per_unit: p.pricePerUnit,
-        unit: p.unit,
-        image_url: p.imageUrl,
-        stock_quantity: p.stockQuantity,
-        is_active: p.isActive,
-        description: p.description,
-        discount: p.discount,
-        is_bogo: p.isBogo,
-        sort_order: p.sortOrder
-      };
-      await supabase.from('products').upsert({ id: p.id, ...payload });
-    } else {
-      const products = await this.getProducts();
-      const idx = products.findIndex(prod => prod.id === p.id);
-      if (idx > -1) {
-        products[idx] = p;
-      } else {
-        p.sortOrder = p.sortOrder ?? products.length;
-        products.push(p);
-      }
-      localStorage.setItem('eifel_gemuese_products_mock', JSON.stringify(products));
-    }
   },
 
   async getOrders(): Promise<Order[]> {
@@ -204,14 +186,7 @@ export const ApiService = {
 
   async saveSettings(s: StoreSettings) {
     if (supabase) {
-      await supabase.from('settings').upsert({
-        id: 1,
-        pickup_day: s.pickupDay,
-        pickup_time: s.pickupTime,
-        open_day: s.openDay,
-        max_slots: s.maxSlots,
-        current_pickup_date: s.currentPickupDate
-      });
+      await supabase.from('settings').upsert({ id: 1, pickup_day: s.pickupDay, pickup_time: s.pickupTime, open_day: s.openDay, max_slots: s.maxSlots, current_pickup_date: s.currentPickupDate });
     } else {
       localStorage.setItem('eifel_gemuese_settings_mock', JSON.stringify(s));
     }
