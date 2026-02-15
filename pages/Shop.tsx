@@ -1,287 +1,259 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
-import ProductCard from '../components/ProductCard';
-import { ApiService, getWeekLabel } from '../services/api';
-import { Product, Customer, OrderItem, Order, StoreSettings } from '../types';
-import { Loader2, X, ArrowRight, Calendar, UserPlus, ShoppingCart, History, ShoppingBag, Banknote } from 'lucide-react';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { Product, Order, StoreSettings, Customer, OrderItem } from '../types';
 
-const Shop: React.FC = () => {
-  const navigate = useNavigate();
-  const [currentUser, setCurrentUser] = useState<Customer | null>(null);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [settings, setSettings] = useState<StoreSettings | null>(null);
-  const [cart, setCart] = useState<Record<string, number>>({});
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
-  const [previousOrder, setPreviousOrder] = useState<Order | null>(null);
-
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-
-  useEffect(() => {
-    let active = true;
-    const loadInitialData = async () => {
-      try {
-        const [user, prodData, storeSettings] = await Promise.all([
-          ApiService.getCurrentUser(),
-          ApiService.getProducts(),
-          ApiService.getSettings()
-        ]);
-        
-        if (!active) return;
-
-        setCurrentUser(user);
-        setProducts(prodData.filter(p => p.isActive));
-        setSettings(storeSettings);
-
-        if (user) {
-          // WICHTIG: Die Woche muss exakt mit der Woche der Bestellung übereinstimmen
-          const week = storeSettings.currentPickupDate 
-            ? getWeekLabel(new Date(storeSettings.currentPickupDate)) 
-            : getWeekLabel(new Date());
-          
-          const prev = await ApiService.getOrdersForUser(`${user.firstName} ${user.lastName}`, week);
-          setPreviousOrder(prev);
-        }
-      } catch (err: any) {
-        console.error("Fehler beim Laden:", err);
-      } finally {
-        if (active) setIsLoading(false);
-      }
-    };
-    loadInitialData();
-    return () => { active = false; };
-  }, []);
-
-  const calculateTotalToPay = (product: Product, quantity: number): number => {
-    let price = product.pricePerUnit;
-    if (product.discount) price = price * (1 - product.discount / 100);
-    return price * quantity;
-  };
-
-  const cartTotal = useMemo(() => {
-    return Object.entries(cart).reduce<number>((sum, [id, qty]) => {
-      const product = products.find(p => p.id === id);
-      if (!product) return sum;
-      return sum + calculateTotalToPay(product, Number(qty));
-    }, 0);
-  }, [cart, products]);
-
-  const cartCount = Object.values(cart).reduce<number>((a, b) => Number(a) + Number(b), 0);
-
-  const handleUpdateQuantity = (productId: string, qty: number) => {
-    setCart(prev => {
-      const next = { ...prev, [productId]: qty };
-      if (qty <= 0) delete next[productId];
-      return next;
-    });
-  };
-
-  const handleSwitchUser = () => {
-    setCurrentUser(null);
-    setPreviousOrder(null);
-    setFirstName('');
-    setLastName('');
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    try {
-      let user = currentUser;
-      if (!user) {
-        if (!firstName || !lastName) throw new Error("Name fehlt!");
-        user = await ApiService.login(firstName, lastName);
-        setCurrentUser(user);
-      }
-      
-      const newItems: OrderItem[] = Object.entries(cart).map(([productId, quantity]) => {
-        const p = products.find(prod => prod.id === productId);
-        if (!p) throw new Error("Produkt nicht gefunden.");
-        const paidQty = Number(quantity);
-        const physicalQty = p.isBogo ? paidQty * 2 : paidQty;
-        const totalLinePrice = calculateTotalToPay(p, paidQty);
-        return { 
-          productId, 
-          quantity: physicalQty, 
-          productName: p.name, 
-          priceAtOrder: Number((totalLinePrice / physicalQty).toFixed(2)), 
-          packed: false 
-        };
-      });
-
-      const totalCombinedTotal = (previousOrder?.totalAmount || 0) + cartTotal;
-      const week = settings?.currentPickupDate 
-        ? getWeekLabel(new Date(settings.currentPickupDate)) 
-        : getWeekLabel(new Date());
-        
-      const order = await ApiService.submitOrder(user, newItems, totalCombinedTotal, week);
-      
-      navigate('/success', { state: { order, newItems: newItems } });
-    } catch (err: any) {
-      alert(err.message || 'Fehler beim Senden.');
-      setIsSubmitting(false);
-    }
-  };
-
-  if (isLoading) return <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4">
-    <Loader2 className="w-10 h-10 text-[#1a4d2e] animate-spin" />
-    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Acker wird gescannt...</p>
-  </div>;
-
-  return (
-    <div className="pb-40 max-w-5xl mx-auto px-4 py-12">
-      <div className="text-center mb-16 mt-8">
-        <h2 className="text-4xl md:text-7xl font-[900] text-[#121a14] mb-4 tracking-tighter leading-[0.9]">
-          Frisches Gemüse.<br/>
-          <span className="text-[#1a4d2e]">Direkt vom Feld.</span>
-        </h2>
-        
-        <div className="max-w-xl mx-auto mb-10">
-          <p className="text-xl font-bold text-gray-900 mb-6 italic">
-            Nächste Ernte: <span className="text-[#1a4d2e] not-italic">Donnerstag, 19.02.2026</span>
-          </p>
-          <div className="h-1.5 w-16 bg-[#1a4d2e] mx-auto rounded-full"></div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
-        {products.map(product => (
-          <ProductCard
-            key={product.id}
-            product={product}
-            quantityInCart={cart[product.id] || 0}
-            onUpdateQuantity={(qty) => handleUpdateQuantity(product.id, qty)}
-          />
-        ))}
-      </div>
-
-      {cartCount > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 w-full max-w-xs px-4">
-          <button onClick={() => setIsCheckoutOpen(true)} className="w-full bg-[#121a14] text-white p-2 rounded-full shadow-2xl flex items-center justify-between border border-white/10 transition-all hover:scale-105 active:scale-95">
-            <div className="flex items-center gap-3 ml-4">
-              <div className="bg-[#1a4d2e] text-white w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-black">{cartCount}</div>
-            </div>
-            <div className="bg-[#1a4d2e] text-white py-3 px-8 rounded-full font-black text-[10px] uppercase tracking-widest flex items-center gap-2">
-              {previousOrder ? 'Zu meiner Ernte hinzufügen' : 'Beute sichern'} <ArrowRight className="w-3 h-3" />
-            </div>
-          </button>
-        </div>
-      )}
-
-      {isCheckoutOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-[#121a14]/80 backdrop-blur-md" onClick={() => !isSubmitting && setIsCheckoutOpen(false)} />
-          <div className="relative bg-white w-full max-w-xl rounded-[3rem] overflow-hidden shadow-2xl p-8 sm:p-14 max-h-[90vh] overflow-y-auto no-scrollbar animate-in zoom-in-95 duration-200">
-            <div className="flex justify-between items-start mb-10">
-              <div>
-                <h3 className="text-3xl font-black text-[#121a14] tracking-tighter uppercase leading-none">Blick in deine Kiste</h3>
-                <p className="text-[9px] font-black text-[#1a4d2e] uppercase tracking-widest mt-2">Wir packen alles zusammen!</p>
-              </div>
-              <button onClick={() => setIsCheckoutOpen(false)} className="p-2 hover:bg-gray-100 rounded-full"><X className="w-8 h-8 text-gray-400" /></button>
-            </div>
-
-            <div className="space-y-6 mb-10">
-              {previousOrder && (
-                <div className="bg-gray-50 border-2 border-dashed border-gray-200 rounded-[2rem] p-6 opacity-60">
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                    <History className="w-4 h-4" /> Schon sicher in deiner Kiste:
-                  </p>
-                  <div className="space-y-2">
-                    {previousOrder.items.map((item, idx) => (
-                      <div key={idx} className="flex justify-between text-sm font-bold text-gray-400">
-                        <span>{item.quantity}x {item.productName}</span>
-                        <span className="tabular-nums">{(item.priceAtOrder * item.quantity).toFixed(2)} €</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <div className="bg-[#fdfaf3] rounded-[2rem] p-8 border-2 border-[#1a4d2e]/10">
-                <p className="text-[10px] font-black text-[#1a4d2e] uppercase tracking-widest mb-6 flex items-center gap-2">
-                  <ShoppingCart className="w-4 h-4" /> {previousOrder ? 'Gerade hinzugefügt:' : 'Deine Auswahl:'}
-                </p>
-                <div className="space-y-4 mb-8">
-                  {Object.entries(cart).map(([id, qty]) => {
-                    const p = products.find(prod => prod.id === id);
-                    if (!p) return null;
-                    const lineTotal = calculateTotalToPay(p, Number(qty));
-                    const originalTotal = p.pricePerUnit * Number(qty);
-                    const isDiscounted = (p.discount || 0) > 0 || p.isBogo;
-
-                    return (
-                      <div key={id} className="flex justify-between items-center text-xl font-black text-[#121a14]">
-                        <span className="uppercase tracking-tighter">
-                          {p.name} <span className="text-xs text-[#1a4d2e] ml-2">({qty}x)</span>
-                        </span>
-                        <div className="text-right">
-                          {isDiscounted && (
-                            <span className="block text-[10px] text-gray-300 line-through tabular-nums leading-none mb-1">
-                              {originalTotal.toFixed(2)} €
-                            </span>
-                          )}
-                          <span className="text-[#1a4d2e] text-sm tabular-nums">
-                            {lineTotal.toFixed(2)} €
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-                
-                <div className="pt-6 border-t border-gray-200 space-y-2">
-                   {previousOrder && (
-                     <>
-                      <div className="flex justify-between text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">
-                        <span>Bisheriger Betrag:</span>
-                        <span>{previousOrder.totalAmount.toFixed(2)} €</span>
-                      </div>
-                      <div className="flex justify-between text-[10px] font-black text-[#1a4d2e] uppercase tracking-widest leading-none">
-                        <span>Neu dazu:</span>
-                        <span>{cartTotal.toFixed(2)} €</span>
-                      </div>
-                     </>
-                   )}
-                   <div className="flex justify-between items-end pt-2">
-                      <div className="text-[11px] font-black text-gray-500 uppercase tracking-widest leading-none">Gesamt am Hof:</div>
-                      <span className="text-4xl font-black text-[#1a4d2e] tabular-nums leading-none">
-                        {((previousOrder?.totalAmount || 0) + cartTotal).toFixed(2)} €
-                      </span>
-                   </div>
-                   
-                   <div className="mt-4 flex items-center gap-2 text-[#1a4d2e] bg-[#1a4d2e]/5 p-3 rounded-xl border border-[#1a4d2e]/10">
-                     <Banknote className="w-4 h-4 shrink-0" />
-                     <p className="text-[9px] font-black uppercase tracking-widest leading-tight">Alles vor Ort am Feld bar bezahlen</p>
-                   </div>
-                </div>
-              </div>
-            </div>
-
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {!currentUser ? (
-                <div className="grid grid-cols-2 gap-4">
-                  <input type="text" value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="VORNAME" className="w-full p-5 bg-[#fdfaf3] rounded-2xl border-2 border-transparent focus:border-[#1a4d2e] outline-none font-black text-sm uppercase" required />
-                  <input type="text" value={lastName} onChange={e => setLastName(e.target.value)} placeholder="NACHNAME" className="w-full p-5 bg-[#fdfaf3] rounded-2xl border-2 border-transparent focus:border-[#1a4d2e] outline-none font-black text-sm uppercase" required />
-                </div>
-              ) : (
-                <div className="bg-[#1a4d2e]/5 p-6 rounded-2xl border border-[#1a4d2e]/10 text-center relative">
-                  <button type="button" onClick={handleSwitchUser} className="absolute top-4 right-4 text-[#1a4d2e] hover:text-black transition-colors" title="Nutzer wechseln"><UserPlus className="w-4 h-4" /></button>
-                  <p className="text-xl font-black uppercase tracking-tight">{currentUser.firstName} {currentUser.lastName}</p>
-                  <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-1">Packen wir es in deine Kiste!</p>
-                </div>
-              )}
-              <button type="submit" disabled={isSubmitting} className="w-full bg-[#1a4d2e] text-white py-6 rounded-2xl font-black uppercase tracking-widest shadow-xl flex items-center justify-center gap-3 hover:bg-black transition-all active:scale-95">
-                {isSubmitting ? <Loader2 className="w-6 h-6 animate-spin" /> : <><ShoppingBag className="w-5 h-5" /> {previousOrder ? 'Zu meiner Ernte hinzufügen' : 'Mission Ernte starten!'}</>}
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
-    </div>
-  );
+const getEnvVar = (key: string): string => {
+  return (import.meta as any).env?.[key] || '';
 };
 
-export default Shop;
+const SUPABASE_URL = getEnvVar('VITE_SUPABASE_URL');
+const SUPABASE_ANON_KEY = getEnvVar('VITE_SUPABASE_ANON_KEY');
+
+const isValidConfig = SUPABASE_URL.startsWith('http') && SUPABASE_ANON_KEY.length > 20;
+
+let supabase: SupabaseClient | null = null;
+if (isValidConfig) {
+  try {
+    supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  } catch (e) {
+    console.error("Supabase Offline-Modus");
+  }
+}
+
+const MOCK_PRODUCTS: Product[] = [
+  {
+    id: 'p1',
+    name: 'Dicke Dinger (Kartoffeln)',
+    pricePerUnit: 4.50,
+    unit: '5kg Sack',
+    imageUrl: 'https://images.unsplash.com/photo-1518977676601-b53f82aba655?w=500',
+    stockQuantity: 12,
+    isActive: true,
+    description: 'Beste Eifeler Knollen. Halten ewig, schmecken immer.',
+    discount: 0,
+    sortOrder: 0
+  },
+  {
+    id: 'p2',
+    name: 'Knack-Möhren',
+    pricePerUnit: 2.20,
+    unit: 'Bund',
+    imageUrl: 'https://images.unsplash.com/photo-1598170845058-32b9d6a5da37?w=500',
+    stockQuantity: 25,
+    isActive: true,
+    description: 'So orange, dass man eine Sonnenbrille braucht.',
+    discount: 10,
+    sortOrder: 1
+  },
+  {
+    id: 'p3',
+    name: 'Acker-Salat',
+    pricePerUnit: 1.80,
+    unit: 'Kopf',
+    imageUrl: 'https://images.unsplash.com/photo-1556801712-76c82666701d?w=500',
+    stockQuantity: 8,
+    isActive: true,
+    description: 'Frischer geht nur, wenn man ihn selbst ausbuddelt.',
+    isBogo: true,
+    sortOrder: 2
+  }
+];
+
+export const getWeekLabel = (date: Date): string => {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  const weekNo = Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+  return `KW ${weekNo}/${d.getUTCFullYear()}`;
+};
+
+export const ApiService = {
+  async getSettings(): Promise<StoreSettings> {
+    const fallback: StoreSettings = { 
+      pickupDay: 'Donnerstag', 
+      pickupTime: '17:00', 
+      openDay: 'Sonntag', 
+      maxSlots: 50, 
+      currentPickupDate: '2026-02-19' 
+    };
+
+    if (!supabase) {
+      const stored = localStorage.getItem('eifel_gemuese_settings_mock');
+      return stored ? JSON.parse(stored) : fallback;
+    }
+
+    const { data } = await supabase.from('settings').select('*').eq('id', 1).maybeSingle();
+    return data ? {
+      pickupDay: data.pickup_day,
+      pickupTime: data.pickup_time,
+      openDay: data.open_day,
+      maxSlots: data.max_slots,
+      currentPickupDate: data.current_pickup_date
+    } : fallback;
+  },
+
+  async getProducts(): Promise<Product[]> {
+    if (!supabase) {
+      const stored = localStorage.getItem('eifel_gemuese_products_mock');
+      let products: Product[] = stored ? JSON.parse(stored) : MOCK_PRODUCTS;
+      return products.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+    }
+    const { data } = await supabase.from('products').select('*').order('sort_order');
+    return (data || []).map(mapProduct);
+  },
+
+  async getCurrentUser(): Promise<Customer | null> {
+    const s = localStorage.getItem('eifel_gemuese_auth');
+    return s ? JSON.parse(s) : null;
+  },
+
+  async login(firstName: string, lastName: string) {
+    const user = { id: firstName.toLowerCase() + '-' + lastName.toLowerCase(), firstName, lastName, registeredAt: new Date().toISOString(), status: 'active' as const };
+    localStorage.setItem('eifel_gemuese_auth', JSON.stringify(user));
+    return user;
+  },
+
+  async logout() {
+    localStorage.removeItem('eifel_gemuese_auth');
+  },
+
+  async getOrdersForUser(customerName: string, weekLabel: string): Promise<Order | null> {
+    const ordersStr = localStorage.getItem('eifel_gemuese_orders_mock');
+    if (!ordersStr) return null;
+    const orders: Order[] = JSON.parse(ordersStr);
+    const normalizedSearchName = customerName.toLowerCase().trim();
+    // WICHTIG: Suche nach Kunde UND Woche
+    return orders.find(o => o.customerName.toLowerCase().trim() === normalizedSearchName && o.weekLabel === weekLabel) || null;
+  },
+
+  async submitOrder(customer: Customer, newItems: OrderItem[], totalAmount: number, week: string) {
+    const fullName = `${customer.firstName} ${customer.lastName}`;
+    const ordersStr = localStorage.getItem('eifel_gemuese_orders_mock');
+    let orders: Order[] = ordersStr ? JSON.parse(ordersStr) : [];
+    
+    const existingOrderIndex = orders.findIndex(o => o.customerName.toLowerCase().trim() === fullName.toLowerCase().trim() && o.weekLabel === week);
+    
+    let finalOrder: Order;
+    if (existingOrderIndex > -1) {
+      const existingOrder = orders[existingOrderIndex];
+      const mergedItems = [...existingOrder.items];
+      newItems.forEach(newItem => {
+        const found = mergedItems.find(m => m.productId === newItem.productId);
+        if (found) {
+          found.quantity += newItem.quantity;
+        } else {
+          mergedItems.push(newItem);
+        }
+      });
+      
+      finalOrder = {
+        ...existingOrder,
+        items: mergedItems,
+        totalAmount: totalAmount
+      };
+      orders[existingOrderIndex] = finalOrder;
+    } else {
+      finalOrder = {
+        id: Math.random().toString(36).substr(2, 9),
+        customerName: fullName,
+        createdAt: new Date().toISOString(),
+        weekLabel: week,
+        items: newItems,
+        totalAmount: totalAmount
+      };
+      orders.push(finalOrder);
+    }
+    
+    localStorage.setItem('eifel_gemuese_orders_mock', JSON.stringify(orders));
+    return finalOrder;
+  },
+
+  async saveProduct(p: Product) {
+    if (supabase) {
+      const payload = {
+        name: p.name,
+        price_per_unit: p.pricePerUnit,
+        unit: p.unit,
+        image_url: p.imageUrl,
+        stock_quantity: p.stockQuantity,
+        is_active: p.isActive,
+        description: p.description,
+        discount: p.discount,
+        is_bogo: p.isBogo,
+        sort_order: p.sortOrder
+      };
+      await supabase.from('products').upsert({ id: p.id, ...payload });
+    } else {
+      const products = await this.getProducts();
+      const idx = products.findIndex(prod => prod.id === p.id);
+      if (idx > -1) {
+        products[idx] = p;
+      } else {
+        p.sortOrder = p.sortOrder ?? products.length;
+        products.push(p);
+      }
+      localStorage.setItem('eifel_gemuese_products_mock', JSON.stringify(products));
+    }
+  },
+
+  async getOrders(): Promise<Order[]> {
+    const ordersStr = localStorage.getItem('eifel_gemuese_orders_mock');
+    return ordersStr ? JSON.parse(ordersStr) : [];
+  },
+
+  async saveSettings(s: StoreSettings) {
+    if (supabase) {
+      await supabase.from('settings').upsert({
+        id: 1,
+        pickup_day: s.pickupDay,
+        pickup_time: s.pickupTime,
+        open_day: s.openDay,
+        max_slots: s.maxSlots,
+        current_pickup_date: s.currentPickupDate
+      });
+    } else {
+      localStorage.setItem('eifel_gemuese_settings_mock', JSON.stringify(s));
+    }
+  },
+
+  async clearAllOrders() {
+    localStorage.removeItem('eifel_gemuese_orders_mock');
+  },
+
+  async getHarvestedStatus(): Promise<string[]> {
+    const s = localStorage.getItem('eifel_gemuese_harvested_mock');
+    return s ? JSON.parse(s) : [];
+  },
+
+  async toggleHarvested(name: string) {
+    const current = await this.getHarvestedStatus();
+    const next = current.includes(name) ? current.filter(n => n !== name) : [...current, name];
+    localStorage.setItem('eifel_gemuese_harvested_mock', JSON.stringify(next));
+  },
+
+  async togglePackedStatus(orderId: string, itemIdx: number) {
+    const ordersStr = localStorage.getItem('eifel_gemuese_orders_mock');
+    if (!ordersStr) return;
+    let orders: Order[] = JSON.parse(ordersStr);
+    const oIdx = orders.findIndex(o => o.id === orderId);
+    if (oIdx > -1) {
+      orders[oIdx].items[itemIdx].packed = !orders[oIdx].items[itemIdx].packed;
+      localStorage.setItem('eifel_gemuese_orders_mock', JSON.stringify(orders));
+    }
+  }
+};
+
+const mapProduct = (p: any): Product => ({
+  id: p.id,
+  name: p.name || 'Unbekannt',
+  pricePerUnit: p.price_per_unit ? Number(p.price_per_unit) : 0,
+  unit: p.unit || 'Stück',
+  imageUrl: p.image_url || 'https://images.unsplash.com/photo-1566385908041-9c9ca335606d?w=400',
+  stockQuantity: p.stock_quantity !== undefined ? Number(p.stock_quantity) : 0,
+  isActive: p.is_active ?? true,
+  description: p.description || '',
+  discount: p.discount ? Number(p.discount) : 0,
+  isBogo: p.is_bogo ?? false,
+  sortOrder: p.sort_order ?? 0
+});
