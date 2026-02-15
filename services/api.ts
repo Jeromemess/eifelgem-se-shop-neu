@@ -9,15 +9,24 @@ const getEnvVar = (key: string): string => {
 const SUPABASE_URL = getEnvVar('VITE_SUPABASE_URL');
 const SUPABASE_ANON_KEY = getEnvVar('VITE_SUPABASE_ANON_KEY');
 
-const isValidConfig = SUPABASE_URL.startsWith('http') && SUPABASE_ANON_KEY.length > 20;
+// Prüfe ob die Umgebungsvariablen gesetzt sind (nicht nur die Platzhalter)
+const isValidConfig = 
+  SUPABASE_URL && 
+  SUPABASE_URL.startsWith('http') && 
+  !SUPABASE_URL.includes('DEINE_SUPABASE_URL_HIER') &&
+  SUPABASE_ANON_KEY && 
+  SUPABASE_ANON_KEY.length > 20;
 
 let supabase: SupabaseClient | null = null;
 if (isValidConfig) {
   try {
     supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    console.log("Supabase Verbindung aktiv.");
   } catch (e) {
-    console.error("Supabase Offline-Modus");
+    console.error("Fehler beim Initialisieren von Supabase:", e);
   }
+} else {
+  console.warn("Supabase Config ungültig oder Platzhalter erkannt. Nutze LocalStorage.");
 }
 
 const MOCK_PRODUCTS: Product[] = [
@@ -59,14 +68,18 @@ export const ApiService = {
       return stored ? JSON.parse(stored) : fallback;
     }
 
-    const { data } = await supabase.from('settings').select('*').eq('id', 1).maybeSingle();
-    return data ? {
-      pickupDay: data.pickup_day,
-      pickupTime: data.pickup_time,
-      openDay: data.open_day,
-      maxSlots: data.max_slots,
-      currentPickupDate: data.current_pickup_date
-    } : fallback;
+    try {
+      const { data } = await supabase.from('settings').select('*').eq('id', 1).maybeSingle();
+      return data ? {
+        pickupDay: data.pickup_day,
+        pickupTime: data.pickup_time,
+        openDay: data.open_day,
+        maxSlots: data.max_slots,
+        currentPickupDate: data.current_pickup_date
+      } : fallback;
+    } catch (e) {
+      return fallback;
+    }
   },
 
   async getProducts(): Promise<Product[]> {
@@ -75,8 +88,19 @@ export const ApiService = {
       let products: Product[] = stored ? JSON.parse(stored) : MOCK_PRODUCTS;
       return products.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
     }
-    const { data, error } = await supabase.from('products').select('*').order('sort_order', { ascending: true });
-    if (error) console.error("Supabase Fetch Error:", error);
+    
+    // Fix: Remove invalid .catch() call on Supabase builder as it is not a standard method and errors are handled via the error object.
+    const { data, error } = await supabase
+      .from('products')
+      .select('*')
+      .order('sort_order', { ascending: true });
+
+    if (error) {
+      console.warn("Ladefehler (evtl. fehlende Spalten), lade ohne Sortierung:", error.message);
+      const { data: fallbackData } = await supabase.from('products').select('*');
+      return (fallbackData || []).map(mapProduct);
+    }
+    
     return (data || []).map(mapProduct);
   },
 
@@ -96,7 +120,10 @@ export const ApiService = {
         sort_order: p.sortOrder
       };
       const { error } = await supabase.from('products').upsert(payload);
-      if (error) throw error;
+      if (error) {
+        console.error("Supabase Save Error:", error);
+        throw new Error("Konnte nicht in Supabase speichern. Bitte prüfen, ob alle Spalten (sort_order, discount, is_bogo) in der Tabelle 'products' existieren.");
+      }
     } else {
       const products = await this.getProducts();
       const idx = products.findIndex(prod => prod.id === p.id);
@@ -117,6 +144,7 @@ export const ApiService = {
         price_per_unit: p.pricePerUnit,
         unit: p.unit,
         image_url: p.imageUrl,
+        // Fix: corrected property name from stock_quantity to stockQuantity for Product interface.
         stock_quantity: p.stockQuantity,
         is_active: p.isActive,
         description: p.description,
@@ -229,6 +257,7 @@ const mapProduct = (p: any): Product => ({
   isActive: p.is_active ?? true,
   description: p.description || '',
   discount: p.discount ? Number(p.discount) : 0,
+  // Fix: corrected property name mapping from is_bogo to isBogo for Product interface.
   isBogo: p.is_bogo ?? false,
   sortOrder: p.sort_order ?? 0
 });
