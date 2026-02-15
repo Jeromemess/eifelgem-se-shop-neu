@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
@@ -163,7 +164,7 @@ const Shop: React.FC = () => {
               <div className="bg-[#1a4d2e] text-white w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-black">{cartCount}</div>
             </div>
             <div className="bg-[#1a4d2e] text-white py-3 px-8 rounded-full font-black text-[10px] uppercase tracking-widest flex items-center gap-2">
-              {previousOrder ? 'Zu meiner Ernte hinzufügen' : 'Beute sichern'} <ArrowRight className="w-3 h-3" />
+              {previousOrder ? 'Zur bestehenden Kiste hinzufügen' : 'Beute sichern'} <ArrowRight className="w-3 h-3" />
             </div>
           </button>
         </div>
@@ -272,7 +273,7 @@ const Shop: React.FC = () => {
                 </div>
               )}
               <button type="submit" disabled={isSubmitting} className="w-full bg-[#1a4d2e] text-white py-6 rounded-2xl font-black uppercase tracking-widest shadow-xl flex items-center justify-center gap-3 hover:bg-black transition-all active:scale-95">
-                {isSubmitting ? <Loader2 className="w-6 h-6 animate-spin" /> : <><ShoppingBag className="w-5 h-5" /> {previousOrder ? 'Zu meiner Ernte hinzufügen' : 'Mission Ernte starten!'}</>}
+                {isSubmitting ? <Loader2 className="w-6 h-6 animate-spin" /> : <><ShoppingBag className="w-5 h-5" /> {previousOrder ? 'Zur bestehenden Kiste hinzufügen' : 'Mission Ernte starten!'}</>}
               </button>
             </form>
           </div>
