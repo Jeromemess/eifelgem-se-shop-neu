@@ -301,17 +301,23 @@ const Admin: React.FC = () => {
             <div className="space-y-6">
                 <div className="p-6 bg-[#fdfaf3] rounded-3xl border border-[#f5f2e8]">
                   <label className="text-[10px] font-black uppercase text-gray-400 mb-4 block">Nächster Abholtermin</label>
-                  <input type="date" value={settings.currentPickupDate} onChange={e => setSettings({...settings, currentPickupDate: e.target.value})} className="w-full p-4 rounded-2xl font-black outline-none border-2 border-transparent focus:border-[#1a4d2e]" />
+                  <input 
+                    type="date" 
+                    value={settings.currentPickupDate} 
+                    onChange={e => setSettings({...settings, currentPickupDate: e.target.value})} 
+                    className="w-full p-4 rounded-2xl font-black outline-none border-2 border-transparent focus:border-[#1a4d2e] bg-white text-center" 
+                  />
+                  <p className="mt-2 text-[8px] font-bold text-gray-400 uppercase tracking-widest">Kunden sehen dieses Datum im Shop</p>
                 </div>
                 <div className="p-6 bg-[#fdfaf3] rounded-3xl border border-[#f5f2e8]">
                    <label className="text-[10px] font-black uppercase text-gray-400 mb-4 block">Shop-Öffnung ab</label>
-                   <select value={settings.openDay} onChange={e => setSettings({...settings, openDay: e.target.value})} className="w-full p-4 rounded-2xl font-black uppercase">
+                   <select value={settings.openDay} onChange={e => setSettings({...settings, openDay: e.target.value})} className="w-full p-4 rounded-2xl font-black uppercase bg-white">
                      {['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'].map(d => <option key={d} value={d}>{d}</option>)}
                    </select>
                 </div>
             </div>
             
-            <button onClick={async () => { await ApiService.saveSettings(settings); setSaveSuccess(true); setTimeout(() => setSaveSuccess(false), 2000); }} className="w-full bg-[#1a4d2e] text-white py-6 rounded-2xl font-black uppercase text-xs shadow-lg">{saveSuccess ? 'Gespeichert!' : 'Einstellungen speichern'}</button>
+            <button onClick={async () => { await ApiService.saveSettings(settings); setSaveSuccess(true); setTimeout(() => setSaveSuccess(false), 2000); }} className="w-full bg-[#1a4d2e] text-white py-6 rounded-2xl font-black uppercase text-xs shadow-lg transition-all active:scale-95">{saveSuccess ? 'Gespeichert!' : 'Einstellungen speichern'}</button>
 
             <div className="pt-10 border-t-4 border-red-500/10 mt-10">
               <div className="bg-red-50/30 p-8 rounded-[2.5rem] border border-red-100">
