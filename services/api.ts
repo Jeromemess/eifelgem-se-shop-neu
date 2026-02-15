@@ -30,7 +30,8 @@ const MOCK_PRODUCTS: Product[] = [
     stockQuantity: 12,
     isActive: true,
     description: 'Beste Eifeler Knollen. Halten ewig, schmecken immer.',
-    discount: 0
+    discount: 0,
+    sortOrder: 0
   },
   {
     id: 'p2',
@@ -41,7 +42,8 @@ const MOCK_PRODUCTS: Product[] = [
     stockQuantity: 25,
     isActive: true,
     description: 'So orange, dass man eine Sonnenbrille braucht.',
-    discount: 10
+    discount: 10,
+    sortOrder: 1
   },
   {
     id: 'p3',
@@ -52,7 +54,8 @@ const MOCK_PRODUCTS: Product[] = [
     stockQuantity: 8,
     isActive: true,
     description: 'Frischer geht nur, wenn man ihn selbst ausbuddelt.',
-    isBogo: true
+    isBogo: true,
+    sortOrder: 2
   }
 ];
 
@@ -68,11 +71,11 @@ export const getWeekLabel = (date: Date): string => {
 export const ApiService = {
   async getSettings(): Promise<StoreSettings> {
     const fallback: StoreSettings = { 
-      pickupDay: 'Mittwoch', 
+      pickupDay: 'Donnerstag', 
       pickupTime: '17:00', 
       openDay: 'Sonntag', 
       maxSlots: 50, 
-      currentPickupDate: new Date().toISOString().split('T')[0] 
+      currentPickupDate: '2026-02-19' 
     };
 
     if (!supabase) {
@@ -81,7 +84,6 @@ export const ApiService = {
     }
 
     const { data } = await supabase.from('settings').select('*').eq('id', 1).maybeSingle();
-    // Corrected open_day to openDay to match StoreSettings interface
     return data ? {
       pickupDay: data.pickup_day,
       pickupTime: data.pickup_time,
@@ -94,13 +96,10 @@ export const ApiService = {
   async getProducts(): Promise<Product[]> {
     if (!supabase) {
       const stored = localStorage.getItem('eifel_gemuese_products_mock');
-      if (!stored) {
-        localStorage.setItem('eifel_gemuese_products_mock', JSON.stringify(MOCK_PRODUCTS));
-        return MOCK_PRODUCTS;
-      }
-      return JSON.parse(stored);
+      let products: Product[] = stored ? JSON.parse(stored) : MOCK_PRODUCTS;
+      return products.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
     }
-    const { data } = await supabase.from('products').select('*').order('name');
+    const { data } = await supabase.from('products').select('*').order('sort_order');
     return (data || []).map(mapProduct);
   },
 
@@ -123,8 +122,8 @@ export const ApiService = {
     const ordersStr = localStorage.getItem('eifel_gemuese_orders_mock');
     if (!ordersStr) return null;
     const orders: Order[] = JSON.parse(ordersStr);
-    // Case-insensitive comparison for names to be safer
     const normalizedSearchName = customerName.toLowerCase().trim();
+    // WICHTIG: Suche nach Kunde UND Woche
     return orders.find(o => o.customerName.toLowerCase().trim() === normalizedSearchName && o.weekLabel === weekLabel) || null;
   },
 
@@ -141,8 +140,11 @@ export const ApiService = {
       const mergedItems = [...existingOrder.items];
       newItems.forEach(newItem => {
         const found = mergedItems.find(m => m.productId === newItem.productId);
-        if (found) found.quantity += newItem.quantity;
-        else mergedItems.push(newItem);
+        if (found) {
+          found.quantity += newItem.quantity;
+        } else {
+          mergedItems.push(newItem);
+        }
       });
       
       finalOrder = {
@@ -178,14 +180,19 @@ export const ApiService = {
         is_active: p.isActive,
         description: p.description,
         discount: p.discount,
-        is_bogo: p.isBogo
+        is_bogo: p.isBogo,
+        sort_order: p.sortOrder
       };
       await supabase.from('products').upsert({ id: p.id, ...payload });
     } else {
       const products = await this.getProducts();
       const idx = products.findIndex(prod => prod.id === p.id);
-      if (idx > -1) products[idx] = p;
-      else products.push(p);
+      if (idx > -1) {
+        products[idx] = p;
+      } else {
+        p.sortOrder = p.sortOrder ?? products.length;
+        products.push(p);
+      }
       localStorage.setItem('eifel_gemuese_products_mock', JSON.stringify(products));
     }
   },
@@ -247,5 +254,6 @@ const mapProduct = (p: any): Product => ({
   isActive: p.is_active ?? true,
   description: p.description || '',
   discount: p.discount ? Number(p.discount) : 0,
-  isBogo: p.is_bogo ?? false
+  isBogo: p.is_bogo ?? false,
+  sortOrder: p.sort_order ?? 0
 });
