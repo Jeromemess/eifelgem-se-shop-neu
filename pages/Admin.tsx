@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { ApiService, getWeekLabel } from '../services/api';
 import { Product, Order, TabView, StoreSettings } from '../types';
 import { 
-  Lock, Trash2, Edit2, Plus, LogOut, Loader2, UserCircle, CheckSquare, Square, Camera, Save, ClipboardList, ShoppingBasket, CheckCircle2, Minus, Eye, EyeOff, AlertTriangle, ArrowUp, ArrowDown
+  Lock, Trash2, Edit2, Plus, LogOut, Loader2, UserCircle, CheckSquare, Square, Camera, Save, ClipboardList, ShoppingBasket, CheckCircle2, Minus, Eye, EyeOff, AlertTriangle, ArrowUp, ArrowDown, Tag, Zap
 } from 'lucide-react';
 
 const ADMIN_PIN = '5719';
@@ -82,28 +82,41 @@ const Admin: React.FC = () => {
   };
 
   const handleMoveProduct = async (index: number, direction: 'up' | 'down') => {
+    if (isLoading) return;
     const newProducts = [...products];
     const targetIndex = direction === 'up' ? index - 1 : index + 1;
     
     if (targetIndex < 0 || targetIndex >= newProducts.length) return;
 
-    // Tausche sortOrder
-    const currentSort = newProducts[index].sortOrder ?? index;
-    const targetSort = newProducts[targetIndex].sortOrder ?? targetIndex;
+    // Erstelle Kopien für den Tausch
+    const current = { ...newProducts[index] };
+    const target = { ...newProducts[targetIndex] };
+
+    // Tausche sortOrder (falls identisch, erzwinge neue Werte basierend auf Index)
+    const currentSort = current.sortOrder ?? index;
+    const targetSort = target.sortOrder ?? targetIndex;
     
-    newProducts[index].sortOrder = targetSort;
-    newProducts[targetIndex].sortOrder = currentSort;
+    current.sortOrder = targetSort;
+    target.sortOrder = currentSort;
+
+    // Falls beide gleich waren, korrigiere sie
+    if (current.sortOrder === target.sortOrder) {
+      current.sortOrder = targetIndex;
+      target.sortOrder = index;
+    }
 
     setIsLoading(true);
     try {
-      await Promise.all([
-        ApiService.saveProduct(newProducts[index]),
-        ApiService.saveProduct(newProducts[targetIndex])
-      ]);
+      // Speichere beide Änderungen
+      await ApiService.saveProduct(current);
+      await ApiService.saveProduct(target);
       await loadData();
     } catch (err) {
+      console.error(err);
       alert("Fehler beim Sortieren.");
-    } finally { setIsLoading(false); }
+    } finally { 
+      setIsLoading(false); 
+    }
   };
 
   const handleResetOrders = async () => {
@@ -248,6 +261,28 @@ const Admin: React.FC = () => {
                         <input type="text" value={currentProduct.unit || ''} onChange={e => setCurrentProduct({...currentProduct, unit: e.target.value})} className="w-full bg-transparent font-black uppercase" required />
                       </div>
                     </div>
+
+                    {/* RABATT UND 1+1 GRATIS WIEDER DABEI */}
+                    <div className="p-4 bg-[#1a4d2e]/5 rounded-2xl border border-[#1a4d2e]/10 flex flex-col sm:flex-row gap-4">
+                      <div className="flex-1">
+                        <label className="text-[8px] font-black uppercase tracking-widest text-[#1a4d2e] mb-1 block">Rabatt %</label>
+                        <div className="relative">
+                          <Tag className="absolute left-3 top-1/2 -translate-y-1/2 w-3 h-3 text-[#1a4d2e]" />
+                          <input type="number" value={currentProduct.discount || 0} onChange={e => setCurrentProduct({...currentProduct, discount: Number(e.target.value)})} className="w-full p-2 pl-8 bg-white rounded-lg font-black text-sm outline-none border border-transparent focus:border-[#1a4d2e]" />
+                        </div>
+                      </div>
+                      <div className="flex-1 flex flex-col justify-end">
+                        <label className="text-[8px] font-black uppercase tracking-widest text-[#1a4d2e] mb-1 block">Sonderaktion</label>
+                        <button type="button" onClick={() => setCurrentProduct({...currentProduct, isBogo: !currentProduct.isBogo})} className={`w-full py-2.5 rounded-lg font-black text-[9px] uppercase tracking-widest border-2 transition-all flex items-center justify-center gap-2 ${currentProduct.isBogo ? 'bg-[#1a4d2e] text-white border-transparent shadow-md' : 'bg-white text-gray-400 border-gray-100'}`}>
+                          <Zap className={`w-3 h-3 ${currentProduct.isBogo ? 'fill-current' : ''}`} /> 1+1 Gratis
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="p-4 bg-[#fdfaf3] rounded-2xl border-2 border-[#f5f2e8]">
+                        <label className="text-[8px] font-black uppercase tracking-widest text-[#1a4d2e] mb-1 block">Lagerbestand am Hof</label>
+                        <input type="number" value={currentProduct.stockQuantity || 0} onChange={e => setCurrentProduct({...currentProduct, stockQuantity: Number(e.target.value)})} className="w-full bg-transparent text-2xl font-black outline-none" />
+                    </div>
                 </div>
                 <div className="flex gap-3">
                   <button type="button" onClick={() => setIsEditing(false)} className="flex-1 py-4 bg-gray-100 rounded-2xl font-black uppercase text-[10px]">Abbruch</button>
@@ -265,23 +300,36 @@ const Admin: React.FC = () => {
                 <div className="grid grid-cols-1 gap-4">
                   {products.map((p, idx) => (
                     <div key={p.id} className="border-2 rounded-[1.5rem] bg-[#fdfbf7] border-[#f5f2e8] p-4 flex gap-4 items-center group">
-                      <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => handleMoveProduct(idx, 'up')} disabled={idx === 0} className="p-1 hover:text-[#1a4d2e] disabled:text-gray-200">
-                          <ArrowUp className="w-4 h-4" />
+                      <div className="flex flex-col gap-1">
+                        <button 
+                          type="button"
+                          onClick={() => handleMoveProduct(idx, 'up')} 
+                          disabled={idx === 0 || isLoading} 
+                          className="p-1.5 hover:text-[#1a4d2e] disabled:text-gray-200 transition-colors"
+                        >
+                          <ArrowUp className="w-5 h-5" />
                         </button>
-                        <button onClick={() => handleMoveProduct(idx, 'down')} disabled={idx === products.length - 1} className="p-1 hover:text-[#1a4d2e] disabled:text-gray-200">
-                          <ArrowDown className="w-4 h-4" />
+                        <button 
+                          type="button"
+                          onClick={() => handleMoveProduct(idx, 'down')} 
+                          disabled={idx === products.length - 1 || isLoading} 
+                          className="p-1.5 hover:text-[#1a4d2e] disabled:text-gray-200 transition-colors"
+                        >
+                          <ArrowDown className="w-5 h-5" />
                         </button>
                       </div>
-                      <img src={p.imageUrl} className="w-16 h-16 rounded-xl object-cover" />
+                      <img src={p.imageUrl} className="w-16 h-16 rounded-xl object-cover shadow-sm" />
                       <div className="flex-1 min-w-0">
                         <h4 className="font-black text-sm uppercase truncate">{p.name}</h4>
-                        {p.description && <p className="text-[9px] text-[#1a4d2e] font-bold uppercase tracking-widest truncate italic">{p.description}</p>}
-                        <p className="text-[9px] font-black text-gray-400">{p.pricePerUnit.toFixed(2)}€ / {p.unit}</p>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="text-[9px] font-black text-gray-400">{p.pricePerUnit.toFixed(2)}€ / {p.unit}</p>
+                          {p.discount ? <span className="bg-orange-100 text-orange-600 px-1 py-0.5 rounded text-[7px] font-black">-{p.discount}%</span> : null}
+                          {p.isBogo ? <span className="bg-green-100 text-green-600 px-1 py-0.5 rounded text-[7px] font-black">1+1</span> : null}
+                        </div>
                       </div>
                       <div className="flex gap-2">
-                        <button onClick={() => handleToggleVisibility(p)} className={`p-3 bg-white border rounded-xl ${p.isActive ? 'text-[#1a4d2e]' : 'text-gray-300'}`}>{p.isActive ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}</button>
-                        <button onClick={() => { setCurrentProduct(p); setIsEditing(true); }} className="p-3 bg-white border rounded-xl"><Edit2 className="w-4 h-4" /></button>
+                        <button onClick={() => handleToggleVisibility(p)} className={`p-3 bg-white border rounded-xl shadow-sm transition-colors ${p.isActive ? 'text-[#1a4d2e]' : 'text-gray-300'}`}>{p.isActive ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}</button>
+                        <button onClick={() => { setCurrentProduct(p); setIsEditing(true); }} className="p-3 bg-white border rounded-xl shadow-sm hover:border-[#1a4d2e] transition-colors"><Edit2 className="w-4 h-4" /></button>
                       </div>
                     </div>
                   ))}
@@ -291,7 +339,68 @@ const Admin: React.FC = () => {
           </div>
         )}
 
-        {/* ... Rest of Admin components ... */}
+        {activeTab === 'harvest' && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 mb-2"><ShoppingBasket className="text-[#1a4d2e] w-5 h-5" /><h3 className="font-black text-xl uppercase tracking-tighter text-black">Ernteplan</h3></div>
+            {harvestSummary.length === 0 ? <p className="text-center py-20 text-gray-300 font-black uppercase tracking-widest text-[10px]">Noch keine Bestellungen</p> : 
+              harvestSummary.map(([name, data]) => {
+                const isHarvested = harvestedItems.includes(name);
+                return (
+                  <div key={name} onClick={() => toggleHarvested(name)} className={`flex items-center justify-between p-5 rounded-[1.5rem] border-2 transition-all cursor-pointer ${isHarvested ? 'bg-[#f5f2e8] border-transparent opacity-40' : 'bg-[#fdfaf3] border-[#f5f2e8]'}`}>
+                    <div className="text-left">
+                      <p className={`text-[9px] font-black uppercase tracking-widest ${isHarvested ? 'text-gray-400' : 'text-[#1a4d2e]'}`}>Bedarf Gesamt</p>
+                      <p className="text-4xl font-black tracking-tighter">{data.quantity} <span className="text-xs">{data.unit}</span></p>
+                      <p className="text-lg font-black uppercase tracking-tighter">{name}</p>
+                    </div>
+                    <div className={`w-12 h-12 rounded-xl border-2 flex items-center justify-center shrink-0 ${isHarvested ? 'bg-[#1a4d2e] text-white border-transparent' : 'bg-white text-gray-200'}`}>
+                      <CheckCircle2 className="w-7 h-7" />
+                    </div>
+                  </div>
+                );
+              })
+            }
+          </div>
+        )}
+
+        {activeTab === 'settings' && (
+          <div className="max-w-xl mx-auto space-y-8 py-4 text-center">
+            <h4 className="font-black text-xl uppercase tracking-tighter text-black">Setup & Verwaltung</h4>
+            <div className="space-y-6">
+                <div className="p-6 bg-[#fdfaf3] rounded-3xl border border-[#f5f2e8]">
+                  <label className="text-[10px] font-black uppercase text-gray-400 mb-4 block">Nächster Abholtermin</label>
+                  <input 
+                    type="date" 
+                    value={settings.currentPickupDate} 
+                    onChange={e => setSettings({...settings, currentPickupDate: e.target.value})} 
+                    className="w-full p-4 rounded-2xl font-black outline-none border-2 border-transparent focus:border-[#1a4d2e] bg-white text-center" 
+                  />
+                </div>
+            </div>
+            
+            <button onClick={async () => { await ApiService.saveSettings(settings); setSaveSuccess(true); setTimeout(() => setSaveSuccess(false), 2000); }} className="w-full bg-[#1a4d2e] text-white py-6 rounded-2xl font-black uppercase text-xs shadow-lg transition-all active:scale-95">{saveSuccess ? 'Gespeichert!' : 'Einstellungen speichern'}</button>
+
+            <div className="pt-10 border-t-4 border-red-500/10 mt-10">
+              <div className="bg-red-50/30 p-8 rounded-[2.5rem] border border-red-100">
+                <p className="text-[10px] font-black uppercase text-red-500 mb-6 tracking-widest flex items-center justify-center gap-2">
+                  <AlertTriangle className="w-4 h-4" /> Neue Woche starten
+                </p>
+                {showResetConfirm ? (
+                  <div className="bg-white p-6 rounded-3xl border-2 border-red-200 animate-in zoom-in-95 shadow-xl">
+                    <p className="text-[11px] font-black text-red-800 mb-4 uppercase tracking-tighter">Wirklich alle Bestellungen löschen?</p>
+                    <div className="flex gap-2">
+                      <button onClick={() => setShowResetConfirm(false)} className="flex-1 py-4 bg-gray-50 border border-gray-200 rounded-xl font-black text-[9px] uppercase">Abbruch</button>
+                      <button onClick={handleResetOrders} className="flex-1 py-4 bg-red-600 text-white rounded-xl font-black text-[9px] uppercase shadow-lg shadow-red-200">Ja, Liste leeren</button>
+                    </div>
+                  </div>
+                ) : (
+                  <button onClick={() => setShowResetConfirm(true)} className="w-full bg-white border-2 border-red-200 text-red-600 hover:bg-red-600 hover:text-white py-5 rounded-2xl font-black uppercase tracking-widest text-[9px] flex items-center justify-center gap-3 transition-all">
+                    <Trash2 className="w-4 h-4" /> Wöchentliche Bestellungen löschen
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
