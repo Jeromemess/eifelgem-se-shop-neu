@@ -10,6 +10,7 @@ export interface Product {
   description?: string;
   discount?: number; // Prozentsatz, z.B. 20 für 20%
   isBogo?: boolean;  // Buy One Get One (1+1 Gratis)
+  sortOrder?: number; // Für die manuelle Sortierung im Shop
 }
 
 export interface OrderItem {
