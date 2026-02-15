@@ -1,10 +1,9 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
 import { ApiService, getWeekLabel } from '../services/api';
 import { Product, Customer, OrderItem, Order, StoreSettings } from '../types';
-import { Loader2, X, ArrowRight, Calendar, UserPlus, ShoppingCart, History, Plus } from 'lucide-react';
+import { Loader2, X, ArrowRight, Calendar, UserPlus, ShoppingCart, History, Plus, AlertCircle } from 'lucide-react';
 
 const Shop: React.FC = () => {
   const navigate = useNavigate();
@@ -13,6 +12,7 @@ const Shop: React.FC = () => {
   const [settings, setSettings] = useState<StoreSettings | null>(null);
   const [cart, setCart] = useState<Record<string, number>>({});
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [previousOrder, setPreviousOrder] = useState<Order | null>(null);
@@ -20,7 +20,6 @@ const Shop: React.FC = () => {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
 
-  // Einmaliges Laden der Daten beim Mounten
   useEffect(() => {
     let active = true;
     const loadInitialData = async () => {
@@ -37,13 +36,20 @@ const Shop: React.FC = () => {
         setProducts(prodData.filter(p => p.isActive));
         setSettings(storeSettings);
 
+        if (prodData.length === 0) {
+          setError("Keine Produkte gefunden. Bitte Datenbank prüfen.");
+        }
+
         if (user) {
-          const week = storeSettings.currentPickupDate ? getWeekLabel(new Date(storeSettings.currentPickupDate)) : getWeekLabel(new Date());
+          const week = storeSettings.currentPickupDate 
+            ? getWeekLabel(new Date(storeSettings.currentPickupDate)) 
+            : getWeekLabel(new Date());
           const prev = await ApiService.getOrdersForUser(`${user.firstName} ${user.lastName}`, week);
           setPreviousOrder(prev);
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error("Shop Load Error:", err);
+        setError("Verbindung zur Datenbank fehlgeschlagen.");
       } finally {
         if (active) setIsLoading(false);
       }
@@ -59,21 +65,21 @@ const Shop: React.FC = () => {
     });
   }, [settings]);
 
-  const calculateTotalToPay = (product: Product, quantity: number) => {
+  const calculateTotalToPay = (product: Product, quantity: number): number => {
     let price = product.pricePerUnit;
     if (product.discount) price = price * (1 - product.discount / 100);
     return price * quantity;
   };
 
   const cartTotal = useMemo(() => {
-    return Object.entries(cart).reduce((sum, [id, qty]) => {
+    return Object.entries(cart).reduce<number>((sum, [id, qty]) => {
       const product = products.find(p => p.id === id);
       if (!product) return sum;
-      return sum + calculateTotalToPay(product, qty as number);
+      return sum + calculateTotalToPay(product, Number(qty));
     }, 0);
   }, [cart, products]);
 
-  const cartCount = Object.values(cart).reduce((a, b) => a + (b as number), 0);
+  const cartCount = Object.values(cart).reduce<number>((a, b) => Number(a) + Number(b), 0);
 
   const handleUpdateQuantity = (productId: string, qty: number) => {
     setCart(prev => {
@@ -104,20 +110,19 @@ const Shop: React.FC = () => {
       const newItems: OrderItem[] = Object.entries(cart).map(([productId, quantity]) => {
         const p = products.find(prod => prod.id === productId);
         if (!p) throw new Error("Produkt nicht gefunden");
-        const paidQty = quantity as number;
+        const paidQty = Number(quantity);
         const physicalQty = p.isBogo ? paidQty * 2 : paidQty;
         const totalLinePrice = calculateTotalToPay(p, paidQty);
         return { 
           productId, 
           quantity: physicalQty, 
           productName: p.name, 
-          priceAtOrder: totalLinePrice / physicalQty, 
+          priceAtOrder: Number((totalLinePrice / physicalQty).toFixed(2)), 
           packed: false 
         };
       });
 
       const order = await ApiService.submitOrder(user, newItems, cartTotal, getWeekLabel(new Date()));
-      // Wir übergeben die NEUEN Items im State, damit die Success-Seite rechnen kann
       navigate('/success', { state: { order, newItems: newItems } });
     } catch (err: any) {
       alert(err.message || 'Fehler beim Senden.');
@@ -125,7 +130,17 @@ const Shop: React.FC = () => {
     }
   };
 
-  if (isLoading) return <div className="min-h-[60vh] flex items-center justify-center"><Loader2 className="w-10 h-10 text-[#1a4d2e] animate-spin" /></div>;
+  if (isLoading) return <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4">
+    <Loader2 className="w-10 h-10 text-[#1a4d2e] animate-spin" />
+    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Verbindung zum Acker wird aufgebaut...</p>
+  </div>;
+
+  if (error) return <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4 px-6 text-center">
+    <AlertCircle className="w-12 h-12 text-red-500 mb-2" />
+    <h3 className="text-2xl font-black uppercase tracking-tighter">Hoppla!</h3>
+    <p className="text-gray-500 max-w-xs font-medium">{error}</p>
+    <button onClick={() => window.location.reload()} className="mt-4 px-6 py-3 bg-[#1a4d2e] text-white rounded-xl font-black uppercase text-[10px] tracking-widest">Nochmal versuchen</button>
+  </div>;
 
   return (
     <div className="pb-40 max-w-5xl mx-auto px-4 py-12">
@@ -195,7 +210,7 @@ const Shop: React.FC = () => {
                   {Object.entries(cart).map(([id, qty]) => {
                     const p = products.find(prod => prod.id === id);
                     if (!p) return null;
-                    const lineTotal = calculateTotalToPay(p, qty as number);
+                    const lineTotal = calculateTotalToPay(p, Number(qty));
                     return (
                       <div key={id} className="flex justify-between items-center text-xl font-black">
                         <span>{p.name} <span className="text-xs text-[#1a4d2e] ml-2">{qty}x</span></span>
@@ -208,7 +223,7 @@ const Shop: React.FC = () => {
                 <div className="pt-6 border-t border-white/50 flex justify-between items-end">
                    <div className="text-[9px] font-black text-gray-400 uppercase">Gesamtbetrag am Hof</div>
                    <span className="text-4xl font-black text-[#1a4d2e] tabular-nums">
-                    {((previousOrder?.totalAmount || 0) + cartTotal).toFixed(2)} €
+                    {Number(((previousOrder?.totalAmount || 0) + cartTotal).toFixed(2))} €
                    </span>
                 </div>
               </div>
@@ -217,8 +232,8 @@ const Shop: React.FC = () => {
             <form onSubmit={handleSubmit} className="space-y-6">
               {!currentUser ? (
                 <div className="grid grid-cols-2 gap-4">
-                  <input type="text" value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="VORNAME" className="w-full p-5 bg-[#fdfaf3] rounded-2xl border-2 border-transparent focus:border-[#1a4d2e] outline-none font-black text-xs uppercase" required />
-                  <input type="text" value={lastName} onChange={e => setLastName(e.target.value)} placeholder="NACHNAME" className="w-full p-5 bg-[#fdfaf3] rounded-2xl border-2 border-transparent focus:border-[#1a4d2e] outline-none font-black text-xs uppercase" required />
+                  <input type="text" value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="VORNAME" className="w-full p-5 bg-[#fdfaf3] rounded-2xl border-2 border-transparent focus:border-[#1a4d2e] outline-none font-black text-sm uppercase" required />
+                  <input type="text" value={lastName} onChange={e => setLastName(e.target.value)} placeholder="NACHNAME" className="w-full p-5 bg-[#fdfaf3] rounded-2xl border-2 border-transparent focus:border-[#1a4d2e] outline-none font-black text-sm uppercase" required />
                 </div>
               ) : (
                 <div className="bg-[#1a4d2e]/5 p-6 rounded-2xl border border-[#1a4d2e]/10 text-center relative">
