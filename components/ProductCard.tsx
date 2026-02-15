@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Product } from '../types';
 import { Plus, Minus, Tag, Zap } from 'lucide-react';
@@ -69,7 +68,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, quantityInCart, onUp
           <h3 className="font-[900] text-[#121a14] text-xl leading-tight mb-1 tracking-tight uppercase">{product.name}</h3>
           <div className="flex items-end gap-2">
             <div className="flex flex-col">
-              {hasDiscount && (
+              {(hasDiscount || product.isBogo) && (
                 <span className="text-gray-300 line-through text-[10px] font-bold leading-none mb-1 tabular-nums">
                   {originalPrice.toFixed(2)} €
                 </span>
