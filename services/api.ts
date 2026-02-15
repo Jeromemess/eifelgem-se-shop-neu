@@ -81,6 +81,7 @@ export const ApiService = {
     }
 
     const { data } = await supabase.from('settings').select('*').eq('id', 1).maybeSingle();
+    // Corrected open_day to openDay to match StoreSettings interface
     return data ? {
       pickupDay: data.pickup_day,
       pickupTime: data.pickup_time,
@@ -122,7 +123,9 @@ export const ApiService = {
     const ordersStr = localStorage.getItem('eifel_gemuese_orders_mock');
     if (!ordersStr) return null;
     const orders: Order[] = JSON.parse(ordersStr);
-    return orders.find(o => o.customerName === customerName && o.weekLabel === weekLabel) || null;
+    // Case-insensitive comparison for names to be safer
+    const normalizedSearchName = customerName.toLowerCase().trim();
+    return orders.find(o => o.customerName.toLowerCase().trim() === normalizedSearchName && o.weekLabel === weekLabel) || null;
   },
 
   async submitOrder(customer: Customer, newItems: OrderItem[], totalAmount: number, week: string) {
@@ -130,7 +133,7 @@ export const ApiService = {
     const ordersStr = localStorage.getItem('eifel_gemuese_orders_mock');
     let orders: Order[] = ordersStr ? JSON.parse(ordersStr) : [];
     
-    const existingOrderIndex = orders.findIndex(o => o.customerName === fullName && o.weekLabel === week);
+    const existingOrderIndex = orders.findIndex(o => o.customerName.toLowerCase().trim() === fullName.toLowerCase().trim() && o.weekLabel === week);
     
     let finalOrder: Order;
     if (existingOrderIndex > -1) {
