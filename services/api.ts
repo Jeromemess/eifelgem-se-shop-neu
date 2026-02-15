@@ -1,3 +1,4 @@
+
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { Product, Order, StoreSettings, Customer, OrderItem } from '../types';
 
@@ -80,9 +81,18 @@ export const getWeekLabel = (date: Date): string => {
 export const ApiService = {
   async getSettings(): Promise<StoreSettings> {
     const fallback: StoreSettings = { 
-      pickupDay: 'Mittwoch', pickupTime: '17:00', openDay: 'Sonntag', maxSlots: 50, currentPickupDate: new Date().toISOString() 
+      pickupDay: 'Mittwoch', 
+      pickupTime: '17:00', 
+      openDay: 'Sonntag', 
+      maxSlots: 50, 
+      currentPickupDate: new Date().toISOString().split('T')[0] 
     };
-    if (!supabase) return fallback;
+
+    if (!supabase) {
+      const stored = localStorage.getItem('eifel_gemuese_settings_mock');
+      return stored ? JSON.parse(stored) : fallback;
+    }
+
     const { data } = await supabase.from('settings').select('*').eq('id', 1).maybeSingle();
     return data ? {
       pickupDay: data.pickup_day,
@@ -94,7 +104,14 @@ export const ApiService = {
   },
 
   async getProducts(): Promise<Product[]> {
-    if (!supabase) return MOCK_PRODUCTS;
+    if (!supabase) {
+      const stored = localStorage.getItem('eifel_gemuese_products_mock');
+      if (!stored) {
+        localStorage.setItem('eifel_gemuese_products_mock', JSON.stringify(MOCK_PRODUCTS));
+        return MOCK_PRODUCTS;
+      }
+      return JSON.parse(stored);
+    }
     const { data } = await supabase.from('products').select('*').order('name');
     return (data || []).map(mapProduct);
   },
@@ -130,9 +147,7 @@ export const ApiService = {
     
     let finalOrder: Order;
     if (existingOrderIndex > -1) {
-      // Bestehende Bestellung erweitern
       const existingOrder = orders[existingOrderIndex];
-      // Wir führen die Items zusammen (Einfachheit halber hängen wir sie an oder summieren Mengen)
       const mergedItems = [...existingOrder.items];
       newItems.forEach(newItem => {
         const found = mergedItems.find(m => m.productId === newItem.productId);
@@ -143,7 +158,7 @@ export const ApiService = {
       finalOrder = {
         ...existingOrder,
         items: mergedItems,
-        totalAmount: totalAmount // Der vom Frontend berechnete Gesamtbetrag
+        totalAmount: totalAmount
       };
       orders[existingOrderIndex] = finalOrder;
     } else {
@@ -162,12 +177,71 @@ export const ApiService = {
     return finalOrder;
   },
   
-  async getHarvestedStatus(): Promise<string[]> { return []; },
-  async toggleHarvested(name: string) {},
-  async togglePackedStatus(id: string, idx: number) {},
-  async saveProduct(p: Product) {},
-  async getOrders(): Promise<Order[]> { return []; },
-  async saveSettings(s: StoreSettings) {},
+  async getHarvestedStatus(): Promise<string[]> {
+    const s = localStorage.getItem('eifel_gemuese_harvested_mock');
+    return s ? JSON.parse(s) : [];
+  },
+
+  async toggleHarvested(name: string) {
+    const current = await this.getHarvestedStatus();
+    const next = current.includes(name) ? current.filter(n => n !== name) : [...current, name];
+    localStorage.setItem('eifel_gemuese_harvested_mock', JSON.stringify(next));
+  },
+
+  async togglePackedStatus(orderId: string, itemIdx: number) {
+    const ordersStr = localStorage.getItem('eifel_gemuese_orders_mock');
+    if (!ordersStr) return;
+    let orders: Order[] = JSON.parse(ordersStr);
+    const oIdx = orders.findIndex(o => o.id === orderId);
+    if (oIdx > -1) {
+      orders[oIdx].items[itemIdx].packed = !orders[oIdx].items[itemIdx].packed;
+      localStorage.setItem('eifel_gemuese_orders_mock', JSON.stringify(orders));
+    }
+  },
+
+  async saveProduct(p: Product) {
+    if (supabase) {
+      const payload = {
+        name: p.name,
+        price_per_unit: p.pricePerUnit,
+        unit: p.unit,
+        image_url: p.imageUrl,
+        stock_quantity: p.stockQuantity,
+        is_active: p.isActive,
+        description: p.description,
+        discount: p.discount,
+        is_bogo: p.isBogo
+      };
+      await supabase.from('products').upsert({ id: p.id, ...payload });
+    } else {
+      const products = await this.getProducts();
+      const idx = products.findIndex(prod => prod.id === p.id);
+      if (idx > -1) products[idx] = p;
+      else products.push(p);
+      localStorage.setItem('eifel_gemuese_products_mock', JSON.stringify(products));
+    }
+  },
+
+  async getOrders(): Promise<Order[]> {
+    const ordersStr = localStorage.getItem('eifel_gemuese_orders_mock');
+    return ordersStr ? JSON.parse(ordersStr) : [];
+  },
+
+  async saveSettings(s: StoreSettings) {
+    if (supabase) {
+      await supabase.from('settings').upsert({
+        id: 1,
+        pickup_day: s.pickupDay,
+        pickup_time: s.pickupTime,
+        open_day: s.openDay,
+        max_slots: s.maxSlots,
+        current_pickup_date: s.currentPickupDate
+      });
+    } else {
+      localStorage.setItem('eifel_gemuese_settings_mock', JSON.stringify(s));
+    }
+  },
+
   async clearAllOrders() {
     localStorage.removeItem('eifel_gemuese_orders_mock');
   }
