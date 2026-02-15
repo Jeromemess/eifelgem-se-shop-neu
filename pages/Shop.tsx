@@ -1,10 +1,9 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
 import { ApiService, getWeekLabel } from '../services/api';
 import { Product, Customer, OrderItem, Order, StoreSettings } from '../types';
-import { Loader2, X, ArrowRight, Calendar, UserPlus, ShoppingCart, History, ShoppingBag, Banknote } from 'lucide-react';
+import { Loader2, X, ArrowRight, Calendar, UserPlus, ShoppingCart, History, ShoppingBag, Banknote, Sprout } from 'lucide-react';
 
 const Shop: React.FC = () => {
   const navigate = useNavigate();
@@ -54,7 +53,7 @@ const Shop: React.FC = () => {
   }, []);
 
   const formattedPickupDate = useMemo(() => {
-    if (!settings?.currentPickupDate) return null;
+    if (!settings?.currentPickupDate) return "Bald";
     return new Date(settings.currentPickupDate).toLocaleDateString('de-DE', {
       weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric'
     });
@@ -118,7 +117,11 @@ const Shop: React.FC = () => {
       });
 
       const totalCombinedTotal = (previousOrder?.totalAmount || 0) + cartTotal;
-      const order = await ApiService.submitOrder(user, newItems, totalCombinedTotal, getWeekLabel(new Date()));
+      const week = settings?.currentPickupDate 
+        ? getWeekLabel(new Date(settings.currentPickupDate)) 
+        : getWeekLabel(new Date());
+        
+      const order = await ApiService.submitOrder(user, newItems, totalCombinedTotal, week);
       
       navigate('/success', { state: { order, newItems: newItems } });
     } catch (err: any) {
@@ -129,23 +132,30 @@ const Shop: React.FC = () => {
 
   if (isLoading) return <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4">
     <Loader2 className="w-10 h-10 text-[#1a4d2e] animate-spin" />
-    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Der Acker wird gescannt...</p>
+    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Acker wird gescannt...</p>
   </div>;
 
   return (
     <div className="pb-40 max-w-5xl mx-auto px-4 py-12">
+      {/* Hero Section mit gewünschtem Text */}
       <div className="text-center mb-16 mt-8">
         <h2 className="text-4xl md:text-7xl font-[900] text-[#121a14] mb-4 tracking-tighter leading-[0.9]">
-          Eifel<span className="text-[#1a4d2e]">gemüse</span>
+          Frisches Gemüse.<br/>
+          <span className="text-[#1a4d2e]">Direkt vom Feld.</span>
         </h2>
-        {formattedPickupDate && (
-          <div className="inline-flex items-center gap-2 bg-[#1a4d2e] text-white px-6 py-3 rounded-full font-black text-[11px] uppercase tracking-widest shadow-xl mb-10 border-2 border-white/20">
-            <Calendar className="w-4 h-4" />
-            Nächste Ernte: {formattedPickupDate}
-          </div>
-        )}
+        
+        <div className="max-w-xl mx-auto mb-10">
+          <p className="text-lg font-bold text-gray-500 mb-6 italic">
+            Nächster Verkauf: <span className="text-[#1a4d2e] not-italic">{formattedPickupDate}</span>
+          </p>
+          <div className="h-1 w-12 bg-[#1a4d2e] mx-auto rounded-full mb-6"></div>
+          <p className="text-sm font-black text-[#121a14] uppercase tracking-widest leading-relaxed">
+            Stöbere durch unsere Ernte und<br/>reserviere deine Auswahl.
+          </p>
+        </div>
       </div>
 
+      {/* Produkt-Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
         {products.map(product => (
           <ProductCard
@@ -157,6 +167,7 @@ const Shop: React.FC = () => {
         ))}
       </div>
 
+      {/* Sticky Bottom Button */}
       {cartCount > 0 && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 w-full max-w-xs px-4">
           <button onClick={() => setIsCheckoutOpen(true)} className="w-full bg-[#121a14] text-white p-2 rounded-full shadow-2xl flex items-center justify-between border border-white/10 transition-all hover:scale-105 active:scale-95">
@@ -170,6 +181,7 @@ const Shop: React.FC = () => {
         </div>
       )}
 
+      {/* Checkout Overlay */}
       {isCheckoutOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-[#121a14]/80 backdrop-blur-md" onClick={() => !isSubmitting && setIsCheckoutOpen(false)} />
@@ -183,6 +195,7 @@ const Shop: React.FC = () => {
             </div>
 
             <div className="space-y-6 mb-10">
+              {/* Bereich: Vorherige Bestellung */}
               {previousOrder && (
                 <div className="bg-gray-50 border-2 border-dashed border-gray-200 rounded-[2rem] p-6 opacity-60">
                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
@@ -199,6 +212,7 @@ const Shop: React.FC = () => {
                 </div>
               )}
 
+              {/* Bereich: Aktuelle Auswahl */}
               <div className="bg-[#fdfaf3] rounded-[2rem] p-8 border-2 border-[#1a4d2e]/10">
                 <p className="text-[10px] font-black text-[#1a4d2e] uppercase tracking-widest mb-6 flex items-center gap-2">
                   <ShoppingCart className="w-4 h-4" /> {previousOrder ? 'Gerade hinzugefügt:' : 'Deine Auswahl:'}
@@ -273,7 +287,7 @@ const Shop: React.FC = () => {
                 </div>
               )}
               <button type="submit" disabled={isSubmitting} className="w-full bg-[#1a4d2e] text-white py-6 rounded-2xl font-black uppercase tracking-widest shadow-xl flex items-center justify-center gap-3 hover:bg-black transition-all active:scale-95">
-                {isSubmitting ? <Loader2 className="w-6 h-6 animate-spin" /> : <><ShoppingBag className="w-5 h-5" /> {previousOrder ? 'Zur bestehenden Kiste hinzufügen' : 'Mission Ernte starten!'}</>}
+                {isSubmitting ? <Loader2 className="w-6 h-6 animate-spin" /> : <><ShoppingBag className="w-5 h-5" /> {previousOrder ? 'Zu meiner Ernte hinzufügen' : 'Mission Ernte starten!'}</>}
               </button>
             </form>
           </div>
