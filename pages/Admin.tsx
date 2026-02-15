@@ -104,12 +104,11 @@ const Admin: React.FC = () => {
 
     setIsLoading(true);
     try {
-      // Speichere die gesamte Liste in einem Rutsch (atomar)
+      // Speichere die gesamte Liste in einem Rutsch (atomar), um Hängenbleiben zu verhindern
       await ApiService.updateAllProducts(normalizedProducts);
-      // Kein erneutes loadData nötig, da lokaler State schon korrekt ist
     } catch (err) {
       console.error(err);
-      alert("Fehler beim Speichern der Sortierung.");
+      alert("Fehler beim Speichern der Sortierung. Prüfe ob die Spalte 'sort_order' in Supabase existiert.");
       loadData(); // Reset bei Fehler
     } finally { 
       setIsLoading(false); 
@@ -247,6 +246,7 @@ const Admin: React.FC = () => {
                       </div>
                     </div>
 
+                    {/* WIEDER DA: RABATT & 1+1 GRATIS */}
                     <div className="p-4 bg-[#1a4d2e]/5 rounded-2xl border border-[#1a4d2e]/10 flex flex-col sm:flex-row gap-4">
                       <div className="flex-1">
                         <label className="text-[8px] font-black uppercase tracking-widest text-[#1a4d2e] mb-1 block">Rabatt %</label>
@@ -258,7 +258,7 @@ const Admin: React.FC = () => {
                       <div className="flex-1">
                         <label className="text-[8px] font-black uppercase tracking-widest text-[#1a4d2e] mb-1 block">Sonderaktion</label>
                         <button type="button" onClick={() => setCurrentProduct({...currentProduct, isBogo: !currentProduct.isBogo})} className={`w-full py-2.5 rounded-lg font-black text-[9px] uppercase tracking-widest border-2 transition-all flex items-center justify-center gap-2 ${currentProduct.isBogo ? 'bg-[#1a4d2e] text-white border-transparent' : 'bg-white text-gray-400 border-gray-100'}`}>
-                          <Zap className="w-3 h-3" /> 1+1 Gratis
+                          <Zap className={`w-3 h-3 ${currentProduct.isBogo ? 'fill-current' : ''}`} /> 1+1 Gratis
                         </button>
                       </div>
                     </div>
