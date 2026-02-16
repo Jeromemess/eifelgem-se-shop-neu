@@ -8,9 +8,9 @@ export interface Product {
   stockQuantity: number;
   isActive: boolean;
   description?: string;
-  discount?: number; // Prozentsatz, z.B. 20 für 20%
-  isBogo?: boolean;  // Buy One Get One (1+1 Gratis)
-  sortOrder?: number; // Für die manuelle Sortierung im Shop
+  discount?: number; 
+  isBogo?: boolean;  
+  sortOrder?: number; 
 }
 
 export interface OrderItem {
@@ -43,7 +43,9 @@ export interface StoreSettings {
   pickupTime: string; 
   openDay: string; 
   maxSlots: number;
-  currentPickupDate: string; // Das konkret eingestellte Datum für die nächste Abholung
+  currentPickupDate: string;
+  isShopOpen: boolean; // NEU: Shop-Status
+  nextOpeningText: string; // NEU: Info-Text für Kunden
 }
 
 export type TabView = 'products' | 'orders' | 'harvest' | 'customers' | 'settings';
