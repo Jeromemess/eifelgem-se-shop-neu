@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
 import { ApiService, getWeekLabel } from '../services/api';
 import { Product, Customer, OrderItem, Order, StoreSettings } from '../types';
-import { Loader2, X, ArrowRight, ShoppingCart, History, ShoppingBag, Banknote, UserPlus } from 'lucide-react';
+import { Loader2, X, ArrowRight, ShoppingCart, History, ShoppingBag, Banknote, UserPlus, Sprout, Tractor } from 'lucide-react';
 
 const Shop: React.FC = () => {
   const navigate = useNavigate();
@@ -33,8 +33,6 @@ const Shop: React.FC = () => {
         if (!active) return;
 
         setCurrentUser(user);
-        
-        // Sortierung nach sortOrder sicherstellen
         const sortedProducts = [...prodData]
           .filter(p => p.isActive)
           .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
@@ -146,7 +144,7 @@ const Shop: React.FC = () => {
         
         <div className="max-w-xl mx-auto mb-10">
           <p className="text-xl font-bold text-gray-900 mb-6 italic">
-            Nächste Ernte: <span className="text-[#1a4d2e] not-italic">Donnerstag, 19.02.2026</span>
+            Nächste Ernte: <span className="text-[#1a4d2e] not-italic">{settings?.currentPickupDate ? new Date(settings.currentPickupDate).toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: '2-digit' }) : 'Demnächst'}</span>
           </p>
           <div className="h-1.5 w-16 bg-[#1a4d2e] mx-auto rounded-full"></div>
         </div>
@@ -170,7 +168,7 @@ const Shop: React.FC = () => {
               <div className="bg-[#1a4d2e] text-white w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-black">{cartCount}</div>
             </div>
             <div className="bg-[#1a4d2e] text-white py-3 px-8 rounded-full font-black text-[10px] uppercase tracking-widest flex items-center gap-2">
-              {previousOrder ? 'Zur Kiste hinzufügen' : 'Bestellung prüfen'} <ArrowRight className="w-3 h-3" />
+              {previousOrder ? 'Beute erweitern' : 'Beute prüfen'} <ArrowRight className="w-3 h-3" />
             </div>
           </button>
         </div>
@@ -183,31 +181,35 @@ const Shop: React.FC = () => {
             <div className="flex justify-between items-start mb-10">
               <div>
                 <h3 className="text-3xl font-black text-[#121a14] tracking-tighter uppercase leading-none">Blick in deine Kiste</h3>
-                <p className="text-[9px] font-black text-[#1a4d2e] uppercase tracking-widest mt-2">Alles frisch für dich!</p>
+                <p className="text-[9px] font-black text-[#1a4d2e] uppercase tracking-widest mt-2">Alles frisch für dich reserviert!</p>
               </div>
               <button onClick={() => setIsCheckoutOpen(false)} className="p-2 hover:bg-gray-100 rounded-full"><X className="w-8 h-8 text-gray-400" /></button>
             </div>
 
             <div className="space-y-6 mb-10">
               {previousOrder && (
-                <div className="bg-gray-50 border-2 border-dashed border-gray-200 rounded-[2rem] p-6 opacity-60">
+                <div className="bg-gray-50 border-2 border-dashed border-gray-200 rounded-[2rem] p-6">
                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                    <History className="w-4 h-4" /> Bereits reserviert:
+                    <History className="w-4 h-4" /> Schon in der Vorratskammer:
                   </p>
                   <div className="space-y-2">
                     {previousOrder.items.map((item, idx) => (
-                      <div key={idx} className="flex justify-between text-sm font-bold text-gray-400">
+                      <div key={idx} className="flex justify-between text-sm font-bold text-gray-500">
                         <span>{item.quantity}x {item.productName}</span>
                         <span className="tabular-nums">{(item.priceAtOrder * item.quantity).toFixed(2)} €</span>
                       </div>
                     ))}
+                    <div className="pt-2 border-t border-gray-100 flex justify-between text-[10px] font-black uppercase text-gray-400">
+                        <span>Zwischenstand:</span>
+                        <span>{previousOrder.totalAmount.toFixed(2)} €</span>
+                    </div>
                   </div>
                 </div>
               )}
 
               <div className="bg-[#fdfaf3] rounded-[2rem] p-8 border-2 border-[#1a4d2e]/10">
                 <p className="text-[10px] font-black text-[#1a4d2e] uppercase tracking-widest mb-6 flex items-center gap-2">
-                  <ShoppingCart className="w-4 h-4" /> Neu in der Auswahl:
+                  <ShoppingCart className="w-4 h-4" /> Neu vom Acker dazu:
                 </p>
                 <div className="space-y-4 mb-8">
                   {Object.entries(cart).map(([id, qty]) => {
@@ -227,16 +229,18 @@ const Shop: React.FC = () => {
                   })}
                 </div>
                 
-                <div className="pt-6 border-t border-gray-200 space-y-2">
-                   <div className="flex justify-between items-end pt-2">
-                      <div className="text-[11px] font-black text-gray-500 uppercase tracking-widest leading-none">Gesamt am Hof:</div>
-                      <span className="text-4xl font-black text-[#1a4d2e] tabular-nums leading-none">
-                        {((previousOrder?.totalAmount || 0) + cartTotal).toFixed(2)} €
-                      </span>
+                <div className="pt-6 border-t border-gray-200 space-y-4">
+                   <div className="flex justify-between items-end">
+                      <div className="text-[11px] font-black text-gray-500 uppercase tracking-widest leading-none">Hof-Rechnung (Gesamt):</div>
+                      <div className="text-right">
+                        <span className="text-4xl font-black text-[#1a4d2e] tabular-nums leading-none">
+                            {((previousOrder?.totalAmount || 0) + cartTotal).toFixed(2)} €
+                        </span>
+                      </div>
                    </div>
-                   <div className="mt-4 flex items-center gap-2 text-[#1a4d2e] bg-[#1a4d2e]/5 p-3 rounded-xl border border-[#1a4d2e]/10">
+                   <div className="flex items-center gap-2 text-[#1a4d2e] bg-[#1a4d2e]/5 p-3 rounded-xl border border-[#1a4d2e]/10">
                      <Banknote className="w-4 h-4 shrink-0" />
-                     <p className="text-[9px] font-black uppercase tracking-widest leading-tight">Barzahlung bei Abholung am Feld</p>
+                     <p className="text-[9px] font-black uppercase tracking-widest leading-tight">Bezahlung in bar direkt am Feld</p>
                    </div>
                 </div>
               </div>
@@ -251,11 +255,12 @@ const Shop: React.FC = () => {
               ) : (
                 <div className="bg-[#1a4d2e]/5 p-6 rounded-2xl border border-[#1a4d2e]/10 text-center relative">
                   <button type="button" onClick={handleSwitchUser} className="absolute top-4 right-4 text-[#1a4d2e] hover:text-black transition-colors" title="Nutzer wechseln"><UserPlus className="w-4 h-4" /></button>
-                  <p className="text-xl font-black uppercase tracking-tight">{currentUser.firstName} {currentUser.lastName}</p>
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Reserviert auf:</p>
+                  <p className="text-xl font-black uppercase tracking-tight text-[#1a4d2e]">{currentUser.firstName} {currentUser.lastName}</p>
                 </div>
               )}
               <button type="submit" disabled={isSubmitting} className="w-full bg-[#1a4d2e] text-white py-6 rounded-2xl font-black uppercase tracking-widest shadow-xl flex items-center justify-center gap-3 hover:bg-black transition-all active:scale-95">
-                {isSubmitting ? <Loader2 className="w-6 h-6 animate-spin" /> : <><ShoppingBag className="w-5 h-5" /> Reservierung absenden</>}
+                {isSubmitting ? <Loader2 className="w-6 h-6 animate-spin" /> : <><Tractor className="w-5 h-5" /> Ernte verbindlich reservieren</>}
               </button>
             </form>
           </div>
