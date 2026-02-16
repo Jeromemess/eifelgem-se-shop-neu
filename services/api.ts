@@ -112,8 +112,17 @@ export const ApiService = {
 
   async deleteOrdersForWeek() {
     if (supabase) {
-      const { error } = await supabase.from('orders').delete().neq('id', '0');
-      if (error) throw error;
+      // WICHTIG: Wir nutzen .neq auf ein Textfeld, um sicherzustellen, dass 
+      // PostgREST die Anfrage als gültig akzeptiert und alle Zeilen löscht.
+      const { error } = await supabase
+        .from('orders')
+        .delete()
+        .neq('customer_name', 'NICHT_VORHANDEN_XYZ_123');
+      
+      if (error) {
+        console.error("Löschfehler Details:", error);
+        throw error;
+      }
     } else {
       localStorage.setItem('eifel_gemuese_orders_mock', '[]');
     }
