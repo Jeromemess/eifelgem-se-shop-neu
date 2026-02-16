@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { useLocation, Link, useNavigate } from 'react-router-dom';
 import { Order, OrderItem } from '../types';
 import { ApiService } from '../services/api';
-import { CheckCircle, ArrowLeft, Calendar, PlusCircle, History, Tractor, Banknote } from 'lucide-react';
+import { CheckCircle, ArrowLeft, Calendar, PlusCircle, History, Tractor, Banknote, Sprout, ArrowDown } from 'lucide-react';
 
 const Success: React.FC = () => {
   const location = useLocation();
@@ -50,6 +50,8 @@ const Success: React.FC = () => {
   }).filter(Boolean) as OrderItem[];
 
   const isFollowUpOrder = previousItems.length > 0;
+  const previousTotal = previousItems.reduce((sum, item) => sum + (item.priceAtOrder * item.quantity), 0);
+  const newlyTotal = newlyAdded.reduce((sum, item) => sum + (item.priceAtOrder * item.quantity), 0);
 
   return (
     <div className="min-h-[85vh] flex items-center justify-center px-4 py-8 bg-[#fdfbf7] pb-24">
@@ -81,7 +83,7 @@ const Success: React.FC = () => {
 
           <div className="mb-10 space-y-10">
             <div className="flex flex-col items-center pb-6 border-b border-gray-100">
-               <span className="text-[9px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1">Reserviert für</span>
+               <span className="text-[9px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1">Beute reserviert für</span>
                <span className="text-2xl font-black text-black uppercase tracking-tighter border-b-4 border-[#1a4d2e]/20">{order.customerName}</span>
             </div>
 
@@ -90,7 +92,7 @@ const Success: React.FC = () => {
                 <div className="w-8 h-8 rounded-full bg-[#1a4d2e] text-white flex items-center justify-center">
                   <PlusCircle className="w-4 h-4" />
                 </div>
-                Frisch dazugepackt:
+                Neu dazugepackt:
               </h4>
               <div className="bg-[#1a4d2e]/5 rounded-3xl p-6 border border-[#1a4d2e]/10">
                 <ul className="space-y-4">
@@ -106,6 +108,10 @@ const Success: React.FC = () => {
                     </li>
                   ))}
                 </ul>
+                <div className="mt-4 pt-4 border-t border-[#1a4d2e]/10 flex justify-between text-[10px] font-black uppercase text-[#1a4d2e]">
+                    <span>Wert der neuen Ernte:</span>
+                    <span>{newlyTotal.toFixed(2)} €</span>
+                </div>
               </div>
             </div>
 
@@ -126,25 +132,29 @@ const Success: React.FC = () => {
                       </li>
                     ))}
                   </ul>
+                  <div className="mt-3 pt-3 border-t border-gray-100 flex justify-between text-[9px] font-black uppercase text-gray-400">
+                    <span>Vorheriger Stand:</span>
+                    <span>{previousTotal.toFixed(2)} €</span>
+                  </div>
                 </div>
               </div>
             )}
 
             <div className="pt-8 flex flex-col items-center border-t-2 border-[#f5f2e8] mt-8 bg-[#121a14] text-white rounded-[3rem] p-10 shadow-2xl relative overflow-hidden">
               <div className="absolute top-0 left-0 w-full h-1 bg-white/10"></div>
-              <span className="font-black text-[#1a4d2e] uppercase tracking-[0.3em] text-[10px] mb-2">Gesamtbetrag der Kiste</span>
+              <span className="font-black text-[#1a4d2e] uppercase tracking-[0.3em] text-[10px] mb-2">Hof-Rechnung (Gesamt)</span>
               <span className="font-black text-6xl tracking-tighter tabular-nums flex items-start">
                 {order.totalAmount.toFixed(2)} <span className="text-2xl mt-2 ml-1">€</span>
               </span>
               <div className="mt-6 px-6 py-3 bg-[#1a4d2e] rounded-full border border-white/10 flex items-center gap-3 shadow-lg">
                 <Banknote className="w-5 h-5 text-white" />
-                <p className="text-[10px] font-black uppercase tracking-widest">Alles vor Ort am Feld bar bezahlen</p>
+                <p className="text-[10px] font-black uppercase tracking-widest">Barzahlung direkt am Feld</p>
               </div>
             </div>
           </div>
 
           <Link to="/" className="w-full text-center bg-[#1a4d2e] text-white font-black py-6 rounded-2xl transition-all flex items-center justify-center gap-3 uppercase tracking-widest text-xs shadow-xl shadow-[#1a4d2e]/20 hover:bg-black active:scale-95">
-            <ArrowLeft className="w-5 h-5" /> Zurück zum Acker für mehr!
+            <ArrowLeft className="w-5 h-5" /> Zurück zum Acker für mehr Beute!
           </Link>
         </div>
       </div>
