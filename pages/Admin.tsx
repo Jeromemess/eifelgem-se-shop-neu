@@ -5,7 +5,7 @@ import { Product, Order, TabView, StoreSettings } from '../types';
 import { 
   Lock, Trash2, Edit2, Plus, LogOut, Loader2, UserCircle, CheckSquare, Square, 
   Save, ClipboardList, X, Wifi, WifiOff, RefreshCcw, Tractor, Calendar, Settings, Power, 
-  ArrowUp, ArrowDown, Upload, Image as ImageIcon, Zap, Tag
+  ArrowUp, ArrowDown, Upload, Image as ImageIcon, Zap, Tag, Eye, EyeOff
 } from 'lucide-react';
 
 const ADMIN_PIN = '5719';
@@ -113,10 +113,23 @@ const Admin: React.FC = () => {
     setProducts(newProducts);
     setIsLoading(true);
     try {
-      // Speichere beide betroffenen Produkte (oder alle, um sicher zu gehen)
       await Promise.all(newProducts.map(p => ApiService.saveProduct(p)));
     } catch (e) {
       console.error("Fehler beim Sortieren:", e);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // SICHTBARKEIT TOGGLE
+  const toggleVisibility = async (p: Product) => {
+    const updated = { ...p, isActive: !p.isActive };
+    setIsLoading(true);
+    try {
+      await ApiService.saveProduct(updated);
+      await loadData();
+    } catch (e) {
+      console.error("Fehler beim Sichtbarkeit ändern:", e);
     } finally {
       setIsLoading(false);
     }
@@ -264,7 +277,7 @@ const Admin: React.FC = () => {
               </div>
               <div className="grid grid-cols-1 gap-4">
                 {products.map((p, idx) => (
-                  <div key={p.id} className="border-2 rounded-[1.5rem] bg-[#fdfbf7] border-[#f5f2e8] p-5 flex gap-5 items-center">
+                  <div key={p.id} className={`border-2 rounded-[1.5rem] bg-[#fdfbf7] border-[#f5f2e8] p-5 flex gap-5 items-center transition-all ${!p.isActive ? 'opacity-50 grayscale bg-gray-50 border-dashed' : ''}`}>
                     <div className="flex flex-col gap-2">
                        <button onClick={() => moveProduct(idx, 'up')} disabled={idx === 0} className="p-1 hover:text-[#1a4d2e] disabled:opacity-20"><ArrowUp className="w-5 h-5" /></button>
                        <button onClick={() => moveProduct(idx, 'down')} disabled={idx === products.length - 1} className="p-1 hover:text-[#1a4d2e] disabled:opacity-20"><ArrowDown className="w-5 h-5" /></button>
@@ -279,6 +292,9 @@ const Admin: React.FC = () => {
                       <p className="text-[10px] font-black text-[#1a4d2e]">{p.pricePerUnit.toFixed(2)}€ / {p.unit}</p>
                     </div>
                     <div className="flex gap-2">
+                      <button onClick={() => toggleVisibility(p)} title={p.isActive ? "Im Shop ausblenden" : "Im Shop anzeigen"} className={`p-3 rounded-xl border transition-all ${p.isActive ? 'bg-white text-gray-400' : 'bg-orange-500 text-white border-transparent'}`}>
+                        {p.isActive ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                      </button>
                       <button onClick={() => { setCurrentProduct(p); setIsEditing(true); }} className="p-3 bg-white border rounded-xl hover:bg-black hover:text-white transition-colors"><Edit2 className="w-4 h-4" /></button>
                       <button onClick={() => { if(confirm("Sorten wirklich vom Hof löschen?")) ApiService.deleteProduct(p.id).then(loadData) }} className="p-3 bg-red-50 text-red-500 border rounded-xl hover:bg-red-500 hover:text-white transition-colors"><Trash2 className="w-4 h-4" /></button>
                     </div>
@@ -355,6 +371,13 @@ const Admin: React.FC = () => {
                           <Upload className="w-3 h-3" /> Foto vom Feld wählen
                           <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
                        </label>
+                    </div>
+
+                    <div className="flex justify-between items-center bg-[#fdfbf7] p-5 rounded-2xl mb-4">
+                       <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Sorte im Shop anzeigen</span>
+                       <button type="button" onClick={() => setCurrentProduct({...currentProduct, isActive: !currentProduct.isActive})} className={`w-12 h-6 rounded-full transition-all relative ${currentProduct.isActive ? 'bg-[#1a4d2e]' : 'bg-gray-200'}`}>
+                          <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${currentProduct.isActive ? 'right-1' : 'left-1'}`} />
+                       </button>
                     </div>
 
                     <div>
