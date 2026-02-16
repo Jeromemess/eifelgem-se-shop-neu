@@ -90,11 +90,13 @@ const Shop: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (Object.keys(cart).length === 0) return;
+    
     setIsSubmitting(true);
     try {
       let user = currentUser;
       if (!user) {
-        if (!firstName || !lastName) throw new Error("Name fehlt!");
+        if (!firstName || !lastName) throw new Error("Bitte gib deinen Namen an.");
         user = await ApiService.login(firstName, lastName);
         setCurrentUser(user);
       }
@@ -120,9 +122,16 @@ const Shop: React.FC = () => {
         : getWeekLabel(new Date());
         
       const order = await ApiService.submitOrder(user, newItems, totalCombinedTotal, week);
+      
+      // Warenkorb leeren nach Erfolg
+      setCart({});
+      setIsCheckoutOpen(false);
+      
       navigate('/success', { state: { order, newItems: newItems } });
     } catch (err: any) {
-      alert(err.message || 'Fehler beim Senden.');
+      console.error("Bestellfehler:", err);
+      alert(err.message || 'Hoppla! Da ist beim Ernten etwas schiefgegangen. Bitte versuche es nochmal.');
+    } finally {
       setIsSubmitting(false);
     }
   };
@@ -134,7 +143,6 @@ const Shop: React.FC = () => {
     </div>
   );
 
-  // SHOP CLOSED SCREEN
   if (settings && !settings.isShopOpen) {
     return (
       <div className="min-h-[70vh] flex items-center justify-center px-4 py-12">
