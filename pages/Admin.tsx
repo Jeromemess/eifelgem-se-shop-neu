@@ -4,7 +4,8 @@ import { ApiService, getWeekLabel } from '../services/api';
 import { Product, Order, TabView, StoreSettings } from '../types';
 import { 
   Lock, Trash2, Edit2, Plus, LogOut, Loader2, UserCircle, CheckSquare, Square, 
-  Save, ClipboardList, X, Wifi, WifiOff, RefreshCcw, Tractor, Calendar, Settings, Power, Info
+  Save, ClipboardList, X, Wifi, WifiOff, RefreshCcw, Tractor, Calendar, Settings, Power, 
+  ArrowUp, ArrowDown, Upload, Image as ImageIcon, Zap, Tag
 } from 'lucide-react';
 
 const ADMIN_PIN = '5719';
@@ -42,7 +43,8 @@ const Admin: React.FC = () => {
         ApiService.getOrders(), 
         ApiService.getSettings()
       ]);
-      setProducts(p); 
+      // Sortiere Produkte nach sortOrder
+      setProducts(p.sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0))); 
       setOrders(o); 
       setSettings(s);
     } catch (err) {
@@ -79,6 +81,44 @@ const Admin: React.FC = () => {
         alert("Fehler beim Löschen: " + (err.message || "Unbekannter Fehler")); 
       }
       finally { setIsLoading(false); }
+    }
+  };
+
+  // BILD UPLOAD HANDLER
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setCurrentProduct({ ...currentProduct, imageUrl: reader.result as string });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // REIHENFOLGE ÄNDERN
+  const moveProduct = async (index: number, direction: 'up' | 'down') => {
+    const newProducts = [...products];
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= newProducts.length) return;
+
+    // Tausche Objekte
+    const temp = newProducts[index];
+    newProducts[index] = newProducts[targetIndex];
+    newProducts[targetIndex] = temp;
+
+    // Update sortOrder Werte
+    newProducts.forEach((p, i) => p.sortOrder = i);
+    
+    setProducts(newProducts);
+    setIsLoading(true);
+    try {
+      // Speichere beide betroffenen Produkte (oder alle, um sicher zu gehen)
+      await Promise.all(newProducts.map(p => ApiService.saveProduct(p)));
+    } catch (e) {
+      console.error("Fehler beim Sortieren:", e);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -220,13 +260,24 @@ const Admin: React.FC = () => {
            <div>
               <div className="flex justify-between items-center mb-8">
                 <h3 className="font-black text-xl uppercase tracking-tighter text-black">Gemüsesorten ({products.length})</h3>
-                <button onClick={() => { setCurrentProduct({ isActive: true }); setIsEditing(true); }} className="bg-black text-white px-5 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-xl flex items-center gap-2"><Plus className="w-4 h-4" /> Neu</button>
+                <button onClick={() => { setCurrentProduct({ isActive: true, discount: 0, isBogo: false, sortOrder: products.length }); setIsEditing(true); }} className="bg-black text-white px-5 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-xl flex items-center gap-2"><Plus className="w-4 h-4" /> Neu</button>
               </div>
               <div className="grid grid-cols-1 gap-4">
-                {products.map(p => (
+                {products.map((p, idx) => (
                   <div key={p.id} className="border-2 rounded-[1.5rem] bg-[#fdfbf7] border-[#f5f2e8] p-5 flex gap-5 items-center">
+                    <div className="flex flex-col gap-2">
+                       <button onClick={() => moveProduct(idx, 'up')} disabled={idx === 0} className="p-1 hover:text-[#1a4d2e] disabled:opacity-20"><ArrowUp className="w-5 h-5" /></button>
+                       <button onClick={() => moveProduct(idx, 'down')} disabled={idx === products.length - 1} className="p-1 hover:text-[#1a4d2e] disabled:opacity-20"><ArrowDown className="w-5 h-5" /></button>
+                    </div>
                     <img src={p.imageUrl || 'https://images.unsplash.com/photo-1566385908041-9c9ca335606d?w=200'} className="w-16 h-16 rounded-xl object-cover shadow-sm" />
-                    <div className="flex-1 min-w-0"><h4 className="font-black text-sm uppercase truncate text-black">{p.name}</h4><p className="text-[10px] font-black text-[#1a4d2e]">{p.pricePerUnit.toFixed(2)}€ / {p.unit}</p></div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-black text-sm uppercase truncate text-black flex items-center gap-2">
+                        {p.name}
+                        {p.isBogo && <Zap className="w-3 h-3 text-green-600 fill-current" />}
+                        {p.discount ? <span className="text-[8px] bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded">-{p.discount}%</span> : null}
+                      </h4>
+                      <p className="text-[10px] font-black text-[#1a4d2e]">{p.pricePerUnit.toFixed(2)}€ / {p.unit}</p>
+                    </div>
                     <div className="flex gap-2">
                       <button onClick={() => { setCurrentProduct(p); setIsEditing(true); }} className="p-3 bg-white border rounded-xl hover:bg-black hover:text-white transition-colors"><Edit2 className="w-4 h-4" /></button>
                       <button onClick={() => { if(confirm("Sorten wirklich vom Hof löschen?")) ApiService.deleteProduct(p.id).then(loadData) }} className="p-3 bg-red-50 text-red-500 border rounded-xl hover:bg-red-500 hover:text-white transition-colors"><Trash2 className="w-4 h-4" /></button>
@@ -291,10 +342,26 @@ const Admin: React.FC = () => {
                        <h3 className="text-3xl font-black uppercase tracking-tighter">{currentProduct.id ? 'Anpassen' : 'Neue Sorte'}</h3>
                        <button type="button" onClick={() => setIsEditing(false)} className="p-2"><X className="w-8 h-8 text-gray-200" /></button>
                     </div>
+
+                    <div className="flex flex-col items-center gap-4 mb-8">
+                       <div className="w-32 h-32 bg-[#fdfbf7] rounded-3xl border-2 border-dashed border-gray-200 flex items-center justify-center overflow-hidden">
+                          {currentProduct.imageUrl ? (
+                            <img src={currentProduct.imageUrl} className="w-full h-full object-cover" />
+                          ) : (
+                            <ImageIcon className="w-10 h-10 text-gray-300" />
+                          )}
+                       </div>
+                       <label className="cursor-pointer bg-white border-2 border-[#1a4d2e] text-[#1a4d2e] px-6 py-2 rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-[#1a4d2e] hover:text-white transition-all flex items-center gap-2">
+                          <Upload className="w-3 h-3" /> Foto vom Feld wählen
+                          <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+                       </label>
+                    </div>
+
                     <div>
                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 block">Name der Sorte</label>
                        <input type="text" value={currentProduct.name || ''} onChange={e => setCurrentProduct({...currentProduct, name: e.target.value})} className="w-full p-5 bg-[#fdfbf7] border-2 border-transparent focus:border-[#1a4d2e] outline-none rounded-2xl font-black uppercase" required />
                     </div>
+                    
                     <div className="grid grid-cols-2 gap-4">
                        <div>
                           <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 block">Preis (€)</label>
@@ -305,14 +372,24 @@ const Admin: React.FC = () => {
                           <input type="text" value={currentProduct.unit || ''} onChange={e => setCurrentProduct({...currentProduct, unit: e.target.value})} placeholder="Bund, kg..." className="w-full p-5 bg-[#fdfbf7] rounded-2xl font-black uppercase" required />
                        </div>
                     </div>
+
+                    <div className="grid grid-cols-2 gap-4 border-t border-b py-6 border-gray-100">
+                       <div>
+                          <label className="text-[10px] font-black uppercase tracking-widest text-orange-500 mb-2 block flex items-center gap-1"><Tag className="w-3 h-3" /> Rabatt (%)</label>
+                          <input type="number" value={currentProduct.discount || 0} onChange={e => setCurrentProduct({...currentProduct, discount: Number(e.target.value)})} className="w-full p-5 bg-orange-50 rounded-2xl font-black text-orange-600" />
+                       </div>
+                       <div className="flex flex-col justify-end">
+                          <button type="button" onClick={() => setCurrentProduct({...currentProduct, isBogo: !currentProduct.isBogo})} className={`w-full p-5 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${currentProduct.isBogo ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-400'}`}>
+                             <Zap className={`w-4 h-4 ${currentProduct.isBogo ? 'fill-current' : ''}`} /> 1+1 GRATIS
+                          </button>
+                       </div>
+                    </div>
+
                     <div>
                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 block">Lagerbestand (am Acker)</label>
                        <input type="number" value={currentProduct.stockQuantity || ''} onChange={e => setCurrentProduct({...currentProduct, stockQuantity: Number(e.target.value)})} className="w-full p-5 bg-[#fdfbf7] rounded-2xl font-black" required />
                     </div>
-                    <div>
-                       <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 block">Bild-URL</label>
-                       <input type="text" value={currentProduct.imageUrl || ''} onChange={e => setCurrentProduct({...currentProduct, imageUrl: e.target.value})} placeholder="https://..." className="w-full p-5 bg-[#fdfbf7] rounded-2xl font-bold text-xs" />
-                    </div>
+
                     <button type="submit" className="w-full py-6 bg-[#1a4d2e] text-white rounded-2xl font-black uppercase tracking-[0.2em] shadow-xl mt-4">Sorte Speichern</button>
                  </form>
               </div>
