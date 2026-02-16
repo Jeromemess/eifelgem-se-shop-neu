@@ -61,7 +61,8 @@ const Admin: React.FC = () => {
     setIsLoading(true);
     try {
       const productToSave: Product = {
-        id: currentProduct.id || `prod_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+        // Wenn es neu ist, lassen wir die ID leer, damit Supabase eine UUID generiert
+        id: currentProduct.id || '',
         name: currentProduct.name || 'Unbekannt',
         pricePerUnit: Number(currentProduct.pricePerUnit) || 0,
         unit: currentProduct.unit || 'Stück',
@@ -88,28 +89,22 @@ const Admin: React.FC = () => {
     
     if (targetIndex < 0 || targetIndex >= newProducts.length) return;
 
-    // Tausche die Elemente im Array
     const temp = newProducts[index];
     newProducts[index] = newProducts[targetIndex];
     newProducts[targetIndex] = temp;
 
-    // Weise neue sortOrder basierend auf dem neuen Index zu (saubere Sequenz)
     const normalizedProducts = newProducts.map((p, i) => ({
       ...p,
       sortOrder: i
     }));
 
-    // Lokales Update für sofortiges Feedback
     setProducts(normalizedProducts);
-
     setIsLoading(true);
     try {
-      // Speichere die gesamte Liste in einem Rutsch (atomar), um Hängenbleiben zu verhindern
       await ApiService.updateAllProducts(normalizedProducts);
     } catch (err) {
       console.error(err);
-      alert("Fehler beim Speichern der Sortierung. Prüfe ob die Spalte 'sort_order' in Supabase existiert.");
-      loadData(); // Reset bei Fehler
+      loadData();
     } finally { 
       setIsLoading(false); 
     }
@@ -231,7 +226,7 @@ const Admin: React.FC = () => {
                     <textarea 
                       value={currentProduct.description || ''} 
                       onChange={e => setCurrentProduct({...currentProduct, description: e.target.value})} 
-                      placeholder="ZUSATZ-INFO ZUM PRODUKT (Z.B. 'Nur noch 3 Stück da!')" 
+                      placeholder="ZUSATZ-INFO ZUM PRODUKT" 
                       className="w-full p-4 bg-[#fdfaf3] rounded-2xl font-medium border-2 border-transparent focus:border-[#1a4d2e] outline-none min-h-[80px] resize-none"
                     />
 
@@ -246,7 +241,6 @@ const Admin: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* WIEDER DA: RABATT & 1+1 GRATIS */}
                     <div className="p-4 bg-[#1a4d2e]/5 rounded-2xl border border-[#1a4d2e]/10 flex flex-col sm:flex-row gap-4">
                       <div className="flex-1">
                         <label className="text-[8px] font-black uppercase tracking-widest text-[#1a4d2e] mb-1 block">Rabatt %</label>
