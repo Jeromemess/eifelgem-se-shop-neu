@@ -1,6 +1,5 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-// Added getWeekLabel to the import list from ApiService module
 import { ApiService, getWeekLabel } from '../services/api';
 import { Product, Order, TabView, StoreSettings } from '../types';
 import { 
@@ -63,18 +62,22 @@ const Admin: React.FC = () => {
     setIsLoading(true);
     try {
       await ApiService.saveSettings(settings);
-      alert("Einstellungen gespeichert!");
-    } catch (err) { alert("Fehler beim Speichern"); }
+      alert("Hof-Einstellungen wurden in der Cloud aktualisiert!");
+    } catch (err) { alert("Fehler beim Speichern der Einstellungen"); }
     finally { setIsLoading(false); }
   };
 
   const resetWeek = async () => {
-    if (confirm("Möchtest du wirklich ALLE Bestellungen löschen? Dies leert den Ernteplan für die neue Woche.")) {
+    if (confirm("Möchtest du wirklich ALLE Bestellungen löschen? Dies leert den Ernteplan für die neue Woche unwiderruflich.")) {
       setIsLoading(true);
       try {
         await ApiService.deleteOrdersForWeek();
-        loadData();
-      } catch (err) { alert("Fehler beim Löschen"); }
+        await loadData();
+        alert("Woche erfolgreich zurückgesetzt. Alle Bestellungen wurden gelöscht.");
+      } catch (err: any) { 
+        console.error("Reset Fehler:", err);
+        alert("Fehler beim Löschen: " + (err.message || "Unbekannter Fehler")); 
+      }
       finally { setIsLoading(false); }
     }
   };
@@ -146,9 +149,9 @@ const Admin: React.FC = () => {
            <div className="space-y-4">
              <div className="flex justify-between items-center mb-6">
                 <h3 className="font-black text-xl uppercase tracking-tighter text-black flex items-center gap-2">Einzel-Bestellungen ({orders.length})</h3>
-                <button onClick={loadData} className="p-2 bg-gray-50 rounded-lg text-gray-400 hover:text-black"><RefreshCcw className="w-4 h-4" /></button>
+                <button onClick={loadData} className="p-2 bg-gray-50 rounded-lg text-gray-400 hover:text-black transition-transform active:rotate-180 duration-500"><RefreshCcw className="w-4 h-4" /></button>
              </div>
-             {orders.length === 0 ? <p className="text-center py-20 text-gray-300 font-black uppercase text-[10px]">Keine Bestellungen</p> : 
+             {orders.length === 0 ? <p className="text-center py-20 text-gray-300 font-black uppercase text-[10px]">Keine Bestellungen vorhanden</p> : 
                orders.map(o => (
                  <div key={o.id} className="border-2 rounded-[1.5rem] border-[#f5f2e8] bg-[#fdfbf7] overflow-hidden">
                     <button onClick={() => setExpandedOrderId(expandedOrderId === o.id ? null : o.id)} className="w-full flex justify-between items-center p-5 hover:bg-white">
@@ -181,7 +184,6 @@ const Admin: React.FC = () => {
           <div className="space-y-6">
             <div className="flex justify-between items-center mb-6">
               <h3 className="font-black text-xl uppercase tracking-tighter text-black flex items-center gap-2"><Tractor className="w-5 h-5 text-[#1a4d2e]" /> Ernteliste (Summen)</h3>
-              {/* Added fix: using getWeekLabel which is now imported */}
               <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">KW {getWeekLabel(new Date())}</p>
             </div>
             
@@ -223,7 +225,7 @@ const Admin: React.FC = () => {
               <div className="grid grid-cols-1 gap-4">
                 {products.map(p => (
                   <div key={p.id} className="border-2 rounded-[1.5rem] bg-[#fdfbf7] border-[#f5f2e8] p-5 flex gap-5 items-center">
-                    <img src={p.imageUrl} className="w-16 h-16 rounded-xl object-cover shadow-sm" />
+                    <img src={p.imageUrl || 'https://images.unsplash.com/photo-1566385908041-9c9ca335606d?w=200'} className="w-16 h-16 rounded-xl object-cover shadow-sm" />
                     <div className="flex-1 min-w-0"><h4 className="font-black text-sm uppercase truncate text-black">{p.name}</h4><p className="text-[10px] font-black text-[#1a4d2e]">{p.pricePerUnit.toFixed(2)}€ / {p.unit}</p></div>
                     <div className="flex gap-2">
                       <button onClick={() => { setCurrentProduct(p); setIsEditing(true); }} className="p-3 bg-white border rounded-xl hover:bg-black hover:text-white transition-colors"><Edit2 className="w-4 h-4" /></button>
@@ -311,7 +313,7 @@ const Admin: React.FC = () => {
                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 block">Bild-URL</label>
                        <input type="text" value={currentProduct.imageUrl || ''} onChange={e => setCurrentProduct({...currentProduct, imageUrl: e.target.value})} placeholder="https://..." className="w-full p-5 bg-[#fdfbf7] rounded-2xl font-bold text-xs" />
                     </div>
-                    <button type="submit" className="w-full py-6 bg-[#1a4d2e] text-white rounded-2xl font-black uppercase tracking-[0.2em] shadow-xl mt-4">Sorte Einlagern</button>
+                    <button type="submit" className="w-full py-6 bg-[#1a4d2e] text-white rounded-2xl font-black uppercase tracking-[0.2em] shadow-xl mt-4">Sorte Speichern</button>
                  </form>
               </div>
            </div>
