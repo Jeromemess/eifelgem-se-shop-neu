@@ -12,7 +12,6 @@ const getEnvVar = (key: string): string => {
 const SUPABASE_URL = getEnvVar('VITE_SUPABASE_URL');
 const SUPABASE_ANON_KEY = getEnvVar('VITE_SUPABASE_ANON_KEY');
 
-// Prüfen, ob die URL wirklich gesetzt ist und kein Platzhalter ist
 const isSupabaseConfigured = 
   SUPABASE_URL && 
   SUPABASE_URL.startsWith('http') && 
@@ -23,7 +22,7 @@ if (isSupabaseConfigured) {
   try {
     supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   } catch (e) {
-    console.error("Supabase Initialisierungsfehler:", e);
+    console.error("Supabase Init Fehler:", e);
   }
 }
 
@@ -66,32 +65,14 @@ export const ApiService = {
         isShopOpen: data.is_shop_open ?? true,
         nextOpeningText: data.next_opening_text || fallback.nextOpeningText
       } : fallback;
-    } catch (e) { 
-      console.error("Settings Error:", e);
-      return fallback; 
-    }
+    } catch (e) { return fallback; }
   },
 
   async getProducts(): Promise<Product[]> {
-    if (!supabase) {
-      console.warn("ApiService: Kein Supabase konfiguriert, lade Mock-Daten.");
-      return JSON.parse(localStorage.getItem('eifel_gemuese_products_mock') || '[]');
-    }
-    try {
-      const { data, error } = await supabase
-        .from('products')
-        .select('*')
-        .order('sort_order', { ascending: true });
-      
-      if (error) {
-        console.error("Supabase Produkte Fehler:", error.message);
-        return [];
-      }
-      return (data || []).map(mapProduct);
-    } catch (e) {
-      console.error("Unerwarteter Fehler beim Produkt-Laden:", e);
-      return [];
-    }
+    if (!supabase) return JSON.parse(localStorage.getItem('eifel_gemuese_products_mock') || '[]');
+    const { data, error } = await supabase.from('products').select('*').order('sort_order', { ascending: true });
+    if (error) return [];
+    return (data || []).map(mapProduct);
   },
 
   async saveProduct(p: Product) {
@@ -115,11 +96,27 @@ export const ApiService = {
       is_bogo: p.isBogo || false,
       sort_order: p.sortOrder || 0
     };
-    // Nur ID mitschicken wenn es eine echte Supabase ID (UUID) ist
-    if (p.id && p.id.includes('-')) (payload as any).id = p.id;
-    
+    if (p.id && (p.id.includes('-') || p.id.length > 20)) (payload as any).id = p.id;
     const { error } = await supabase.from('products').upsert(payload);
     if (error) throw error;
+  },
+
+  async getOrders(): Promise<Order[]> {
+    if (supabase) {
+      const { data, error } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
+      if (error) return [];
+      return (data || []).map(mapOrder);
+    }
+    return JSON.parse(localStorage.getItem('eifel_gemuese_orders_mock') || '[]');
+  },
+
+  async deleteOrdersForWeek() {
+    if (supabase) {
+      const { error } = await supabase.from('orders').delete().neq('id', '0');
+      if (error) throw error;
+    } else {
+      localStorage.setItem('eifel_gemuese_orders_mock', '[]');
+    }
   },
 
   async submitOrder(user: Customer, items: OrderItem[], totalAmount: number, weekLabel: string): Promise<Order> {
@@ -130,32 +127,21 @@ export const ApiService = {
         total_amount: totalAmount,
         week_label: weekLabel
       }).select().single();
-      
       if (error) throw error;
       return mapOrder(data);
-    } else {
-      const orders = await this.getOrders();
-      const newOrder: Order = {
-        id: 'mock-' + Date.now(),
-        customerName: `${user.firstName} ${user.lastName}`,
-        createdAt: new Date().toISOString(),
-        weekLabel,
-        items,
-        totalAmount
-      };
-      orders.push(newOrder);
-      localStorage.setItem('eifel_gemuese_orders_mock', JSON.stringify(orders));
-      return newOrder;
     }
+    return { id: 'mock', customerName: 'test', createdAt: '', weekLabel, items, totalAmount };
   },
 
-  async getOrders(): Promise<Order[]> {
+  async saveSettings(s: StoreSettings) {
     if (supabase) {
-      const { data, error } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
-      if (error) return [];
-      return (data || []).map(mapOrder);
+      const { error } = await supabase.from('settings').upsert({ 
+        id: 1, pickup_day: s.pickupDay, pickup_time: s.pickupTime, open_day: s.openDay, 
+        max_slots: s.maxSlots, current_pickup_date: s.currentPickupDate,
+        is_shop_open: s.isShopOpen, next_opening_text: s.nextOpeningText
+      });
+      if (error) throw error;
     }
-    return JSON.parse(localStorage.getItem('eifel_gemuese_orders_mock') || '[]');
   },
 
   async togglePackedStatus(orderId: string, itemIdx: number) {
@@ -171,16 +157,6 @@ export const ApiService = {
 
   async deleteProduct(id: string) {
     if (supabase) await supabase.from('products').delete().eq('id', id);
-  },
-
-  async saveSettings(s: StoreSettings) {
-    if (supabase) {
-      await supabase.from('settings').upsert({ 
-        id: 1, pickup_day: s.pickupDay, pickup_time: s.pickupTime, open_day: s.openDay, 
-        max_slots: s.maxSlots, current_pickup_date: s.currentPickupDate,
-        is_shop_open: s.isShopOpen, next_opening_text: s.nextOpeningText
-      });
-    }
   },
 
   async getCurrentUser(): Promise<Customer | null> {
@@ -207,7 +183,7 @@ export const ApiService = {
 
 const mapProduct = (p: any): Product => ({
   id: p.id,
-  name: p.name || 'Unbenannte Sorte',
+  name: p.name || 'Unbenannt',
   pricePerUnit: Number(p.price_per_unit ?? p.pricePerUnit ?? 0),
   unit: p.unit || 'Stück',
   imageUrl: p.image_url ?? p.imageUrl ?? '',
