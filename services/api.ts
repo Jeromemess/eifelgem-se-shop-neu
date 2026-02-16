@@ -21,7 +21,7 @@ if (isValidConfig) {
   try {
     supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   } catch (e) {
-    console.error("Supabase Init Error:", e);
+    console.error("Supabase Init Fehler:", e);
   }
 }
 
@@ -59,11 +59,9 @@ export const ApiService = {
       return products.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
     }
     
-    // Versuche mit Sortierung zu laden
     const { data, error } = await supabase.from('products').select('*').order('sort_order', { ascending: true });
     
     if (error) {
-      // Falls sort_order fehlt, lade einfach alles ohne Sortierung
       const { data: fallbackData } = await supabase.from('products').select('*');
       return (fallbackData || []).map(mapProduct);
     }
@@ -79,9 +77,11 @@ export const ApiService = {
       return;
     }
 
-    // Vollständiger Payload
-    const fullPayload = {
-      id: p.id,
+    // FIX: Wenn die ID mit 'prod_' beginnt oder leer ist, löschen wir sie für Supabase,
+    // damit die Datenbank eine korrekte UUID generiert.
+    const isNew = !p.id || p.id.startsWith('prod_');
+
+    const payload: any = {
       name: p.name,
       price_per_unit: p.pricePerUnit,
       unit: p.unit,
@@ -89,18 +89,20 @@ export const ApiService = {
       stock_quantity: p.stockQuantity,
       is_active: p.isActive,
       description: p.description,
-      discount: p.discount,
-      is_bogo: p.isBogo,
-      sort_order: p.sortOrder
+      discount: p.discount || 0,
+      is_bogo: p.isBogo || false,
+      sort_order: p.sortOrder || 0
     };
 
-    const { error } = await supabase.from('products').upsert(fullPayload);
+    if (!isNew) {
+      payload.id = p.id;
+    }
 
-    if (error && error.message.includes('column')) {
-      console.warn("Datenbank veraltet. Speichere Basis-Daten ohne neue Felder.");
-      // Sicherheits-Payload (nur Felder die sicher existieren)
+    const { error } = await supabase.from('products').upsert(payload);
+
+    if (error) {
+      // Zweiter Versuch ohne neue Spalten, falls die DB noch nicht aktualisiert wurde
       const safePayload = {
-        id: p.id,
         name: p.name,
         price_per_unit: p.pricePerUnit,
         unit: p.unit,
@@ -109,10 +111,10 @@ export const ApiService = {
         is_active: p.isActive,
         description: p.description
       };
+      if (!isNew) (safePayload as any).id = p.id;
+      
       const { error: retryError } = await supabase.from('products').upsert(safePayload);
-      if (retryError) throw retryError;
-    } else if (error) {
-      throw error;
+      if (retryError) throw new Error("Speichern fehlgeschlagen: " + retryError.message);
     }
   },
 
@@ -122,25 +124,26 @@ export const ApiService = {
       return;
     }
     
-    const payloads = products.map(p => ({
-      id: p.id,
-      name: p.name,
-      price_per_unit: p.pricePerUnit,
-      unit: p.unit,
-      image_url: p.imageUrl,
-      stock_quantity: p.stockQuantity,
-      is_active: p.isActive,
-      description: p.description,
-      discount: p.discount,
-      is_bogo: p.isBogo,
-      sort_order: p.sortOrder
-    }));
+    // Batch Update nur für existierende IDs (daher filter)
+    const payloads = products
+      .filter(p => p.id && !p.id.startsWith('prod_'))
+      .map(p => ({
+        id: p.id,
+        name: p.name,
+        price_per_unit: p.pricePerUnit,
+        unit: p.unit,
+        image_url: p.imageUrl,
+        stock_quantity: p.stockQuantity,
+        is_active: p.isActive,
+        description: p.description,
+        discount: p.discount,
+        is_bogo: p.isBogo,
+        sort_order: p.sortOrder
+      }));
 
-    const { error } = await supabase.from('products').upsert(payloads);
-    
-    // Wenn Sortierung in DB fehlt, können wir hier nichts tun außer zu warnen
-    if (error && error.message.includes('column')) {
-      console.error("Sortierung kann nicht gespeichert werden, da Spalten in Supabase fehlen.");
+    if (payloads.length > 0) {
+      const { error } = await supabase.from('products').upsert(payloads);
+      if (error) console.warn("Batch Update teilweise fehlgeschlagen (evtl. neue Produkte dabei)");
     }
   },
 
