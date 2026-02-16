@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
 import { ApiService, getWeekLabel } from '../services/api';
 import { Product, Customer, OrderItem, Order, StoreSettings } from '../types';
-import { Loader2, X, ArrowRight, ShoppingCart, History, ShoppingBag, Banknote, UserPlus, Sprout, Tractor } from 'lucide-react';
+import { Loader2, X, ArrowRight, ShoppingCart, History, ShoppingBag, Banknote, UserPlus, Sprout, Tractor, Clock, MapPin } from 'lucide-react';
 
 const Shop: React.FC = () => {
   const navigate = useNavigate();
@@ -134,6 +134,31 @@ const Shop: React.FC = () => {
     </div>
   );
 
+  // SHOP CLOSED SCREEN
+  if (settings && !settings.isShopOpen) {
+    return (
+      <div className="min-h-[70vh] flex items-center justify-center px-4 py-12">
+        <div className="max-w-xl w-full bg-white rounded-[3.5rem] shadow-2xl border border-[#f5f2e8] p-10 sm:p-16 text-center overflow-hidden relative">
+          <div className="absolute top-0 left-0 w-full h-2 bg-orange-400"></div>
+          <div className="w-24 h-24 bg-orange-50 rounded-full flex items-center justify-center mx-auto mb-8">
+            <Clock className="w-12 h-12 text-orange-400 animate-pulse" />
+          </div>
+          <h2 className="text-4xl font-[900] text-[#121a14] tracking-tighter uppercase leading-none mb-6">Hofpause!</h2>
+          <p className="text-lg font-bold text-gray-600 mb-10 italic">
+            Wir wühlen gerade im Dreck und aktualisieren die Sorten für dich. <br/>Komm bald wieder!
+          </p>
+          <div className="bg-[#fdfaf3] border-2 border-dashed border-gray-200 rounded-3xl p-8 mb-8">
+            <p className="text-[10px] font-black text-[#1a4d2e] uppercase tracking-[0.2em] mb-2">Shop öffnet wieder:</p>
+            <p className="text-2xl font-black text-[#1a4d2e] uppercase tracking-tighter">{settings.nextOpeningText || 'Demnächst'}</p>
+          </div>
+          <div className="flex items-center justify-center gap-2 text-[10px] font-black text-gray-400 uppercase tracking-widest">
+            <MapPin className="w-3 h-3" /> Eifelgemüse am Acker
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="pb-40 max-w-5xl mx-auto px-4 py-12">
       <div className="text-center mb-16 mt-8">
@@ -141,7 +166,6 @@ const Shop: React.FC = () => {
           Frisches Gemüse.<br/>
           <span className="text-[#1a4d2e]">Direkt vom Feld.</span>
         </h2>
-        
         <div className="max-w-xl mx-auto mb-10">
           <p className="text-xl font-bold text-gray-900 mb-6 italic">
             Nächste Ernte: <span className="text-[#1a4d2e] not-italic">{settings?.currentPickupDate ? new Date(settings.currentPickupDate).toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: '2-digit' }) : 'Demnächst'}</span>
