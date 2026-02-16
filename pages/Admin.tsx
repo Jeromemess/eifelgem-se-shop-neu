@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { ApiService, getWeekLabel } from '../services/api';
 import { Product, Order, TabView, StoreSettings } from '../types';
 import { 
-  Lock, Trash2, Edit2, Plus, LogOut, Loader2, UserCircle, CheckSquare, Square, Camera, Save, ClipboardList, ShoppingBasket, CheckCircle2, Minus, Eye, EyeOff, AlertTriangle, ArrowUp, ArrowDown, Tag, Zap, X, Store, Info
+  Lock, Trash2, Edit2, Plus, LogOut, Loader2, UserCircle, CheckSquare, Square, Camera, Save, ClipboardList, ShoppingBasket, CheckCircle2, Minus, Eye, EyeOff, AlertTriangle, ArrowUp, ArrowDown, Tag, Zap, X, Store, Info, Wifi, WifiOff
 } from 'lucide-react';
 
 const ADMIN_PIN = '5719';
@@ -23,6 +23,8 @@ const Admin: React.FC = () => {
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const isLive = ApiService.isLive();
 
   useEffect(() => {
     if (sessionStorage.getItem('admin_session') === 'true') { 
@@ -146,7 +148,13 @@ const Admin: React.FC = () => {
       <div className="flex justify-between items-center mb-8">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 bg-[#f5f2e8] rounded-[1rem] flex items-center justify-center text-[#1a4d2e]"><UserCircle className="w-6 h-6" /></div>
-          <div><h1 className="text-xl font-black uppercase tracking-tighter leading-none text-black">Hof-Zentrale</h1></div>
+          <div>
+            <h1 className="text-xl font-black uppercase tracking-tighter leading-none text-black">Hof-Zentrale</h1>
+            <div className={`mt-1 flex items-center gap-1.5 ${isLive ? 'text-green-600' : 'text-orange-500'}`}>
+               {isLive ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />}
+               <span className="text-[8px] font-black uppercase tracking-widest">{isLive ? 'Live (Supabase)' : 'Lokal (Testmodus)'}</span>
+            </div>
+          </div>
         </div>
         <button onClick={() => { sessionStorage.removeItem('admin_session'); setIsAuthenticated(false); }} className="p-2 text-gray-300 hover:text-red-600 transition-colors"><LogOut className="w-5 h-5" /></button>
       </div>
@@ -161,6 +169,15 @@ const Admin: React.FC = () => {
 
       <div className="bg-white rounded-[2rem] p-4 sm:p-10 border border-[#f5f2e8] shadow-sm min-h-[400px] relative">
         {isLoading && !isEditing && <div className="absolute inset-0 bg-white/60 flex items-center justify-center z-50 rounded-[2rem]"><Loader2 className="w-10 h-10 animate-spin text-[#1a4d2e]" /></div>}
+
+        {!isLive && activeTab === 'orders' && orders.length > 0 && (
+          <div className="mb-6 p-4 bg-orange-50 border border-orange-200 rounded-2xl flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-orange-500 shrink-0 mt-0.5" />
+            <p className="text-[10px] font-bold text-orange-700 leading-tight">
+              Achtung: Du bist im <span className="font-black">LOKALEN MODUS</span>. Bestellungen werden nur in diesem Browser gespeichert und nicht mit Supabase synchronisiert. Überprüfe deine VITE_SUPABASE_URL!
+            </p>
+          </div>
+        )}
 
         {activeTab === 'orders' && (
            <div className="space-y-4">
