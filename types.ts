@@ -28,6 +28,8 @@ export interface Order {
   weekLabel: string;
   items: OrderItem[];
   totalAmount: number;
+  isShipping?: boolean;
+  shippingCost?: number;
 }
 
 export interface Customer {
