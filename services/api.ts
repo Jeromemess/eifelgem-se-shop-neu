@@ -129,25 +129,27 @@ export const ApiService = {
   },
 
   async submitOrder(user: Customer, items: OrderItem[], totalAmount: number, weekLabel: string, isShipping: boolean = false): Promise<Order> {
-    const customerName = `${user.firstName} ${user.lastName}`;
+    const baseName = `${user.firstName} ${user.lastName}`;
+    const customerName = isShipping ? `${baseName} (VERSAND)` : baseName;
     
     if (supabase) {
-      // Check if order exists for this week to merge
-      const { data: existingOrder } = await supabase
+      // Wir suchen nach Bestellungen für diesen Kunden in dieser Woche.
+      // Wir suchen sowohl nach dem Namen mit als auch ohne (VERSAND) Zusatz.
+      const { data: existingOrders } = await supabase
         .from('orders')
         .select('*')
-        .ilike('customer_name', customerName.trim())
-        .eq('week_label', weekLabel)
-        .maybeSingle();
+        .ilike('customer_name', `${baseName}%`)
+        .eq('week_label', weekLabel);
+
+      const existingOrder = existingOrders && existingOrders.length > 0 ? existingOrders[0] : null;
 
       if (existingOrder) {
-        // Merge items
+        // Artikel zusammenführen
         const mergedItems = [...existingOrder.items];
         items.forEach(newItem => {
           const existingItemIdx = mergedItems.findIndex(i => i.productId === newItem.productId);
           if (existingItemIdx > -1) {
             mergedItems[existingItemIdx].quantity += newItem.quantity;
-            // Reset packed status if new items added? Usually yes.
             mergedItems[existingItemIdx].packed = false;
           } else {
             mergedItems.push(newItem);
@@ -159,7 +161,7 @@ export const ApiService = {
           .update({
             items: mergedItems,
             total_amount: totalAmount,
-            is_shipping: isShipping // Update shipping preference
+            customer_name: customerName // Aktualisiere ggf. den Namen (falls sich Versandwunsch geändert hat)
           })
           .eq('id', existingOrder.id)
           .select()
@@ -168,22 +170,21 @@ export const ApiService = {
         if (error) throw error;
         return mapOrder(data);
       } else {
-        // Create new
+        // Neue Bestellung anlegen
         const { data, error } = await supabase.from('orders').insert({
           customer_name: customerName,
           items: items,
           total_amount: totalAmount,
-          week_label: weekLabel,
-          is_shipping: isShipping
+          week_label: weekLabel
         }).select().single();
         if (error) throw error;
         return mapOrder(data);
       }
     }
 
-    // Mock implementation
+    // Mock implementation (Lokal)
     const orders = JSON.parse(localStorage.getItem('eifel_gemuese_orders_mock') || '[]');
-    const existingIdx = orders.findIndex((o: any) => o.customerName === customerName && o.weekLabel === weekLabel);
+    const existingIdx = orders.findIndex((o: any) => o.customerName.startsWith(baseName) && o.weekLabel === weekLabel);
     
     if (existingIdx > -1) {
       const existing = orders[existingIdx];
@@ -197,7 +198,7 @@ export const ApiService = {
           mergedItems.push(newItem);
         }
       });
-      orders[existingIdx] = { ...existing, items: mergedItems, totalAmount, isShipping };
+      orders[existingIdx] = { ...existing, items: mergedItems, totalAmount, customerName };
       localStorage.setItem('eifel_gemuese_orders_mock', JSON.stringify(orders));
       return orders[existingIdx];
     }
@@ -208,8 +209,7 @@ export const ApiService = {
       createdAt: new Date().toISOString(), 
       weekLabel, 
       items, 
-      totalAmount,
-      isShipping
+      totalAmount
     };
     orders.push(newOrder);
     localStorage.setItem('eifel_gemuese_orders_mock', JSON.stringify(orders));
@@ -285,6 +285,6 @@ const mapOrder = (o: any): Order => ({
   weekLabel: o.week_label ?? o.weekLabel,
   totalAmount: Number(o.total_amount ?? o.totalAmount ?? 0),
   items: o.items || [],
-  isShipping: o.is_shipping ?? o.isShipping ?? false,
-  shippingCost: o.shipping_cost ?? o.shippingCost ?? 0
+  isShipping: (o.customer_name ?? o.customerName ?? '').includes('(VERSAND)'),
+  shippingCost: 0
 });
