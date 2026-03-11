@@ -4,57 +4,58 @@ import { useNavigate } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
 import { ApiService, getWeekLabel } from '../services/api';
 import { Product, Customer, OrderItem, Order, StoreSettings } from '../types';
-import { Loader2, X, ArrowRight, ShoppingCart, History, ShoppingBag, Banknote, UserPlus, Sprout, Tractor, Clock, MapPin } from 'lucide-react';
+import { Loader2, X, ArrowRight, ShoppingCart, History, ShoppingBag, Banknote, UserPlus, Sprout, Tractor, Clock, MapPin, RefreshCcw } from 'lucide-react';
 
 const Shop: React.FC = () => {
   const navigate = useNavigate();
   const [currentUser, setCurrentUser] = useState<Customer | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
-  const [settings, setSettings] = useState<StoreSettings | null>(null);
+  const [settings, setSettings] = useState<StoreSettings>({ 
+    pickupDay: '', pickupTime: '', openDay: '', maxSlots: 0, currentPickupDate: '', isShopOpen: true, nextOpeningText: '' 
+  });
   const [cart, setCart] = useState<Record<string, number>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const [isShipping, setIsShipping] = useState(false);
   const [previousOrder, setPreviousOrder] = useState<Order | null>(null);
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
 
-  useEffect(() => {
-    let active = true;
-    const loadInitialData = async () => {
-      try {
-        const [user, prodData, storeSettings] = await Promise.all([
-          ApiService.getCurrentUser(),
-          ApiService.getProducts(),
-          ApiService.getSettings()
-        ]);
-        
-        if (!active) return;
+  const loadInitialData = async () => {
+    setIsLoading(true);
+    try {
+      const [user, prodData, storeSettings] = await Promise.all([
+        ApiService.getCurrentUser(),
+        ApiService.getProducts(),
+        ApiService.getSettings()
+      ]);
+      
+      setCurrentUser(user);
+      const sortedProducts = [...prodData]
+        .filter(p => p.isActive)
+        .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+      
+      setProducts(sortedProducts);
+      setSettings(storeSettings);
 
-        setCurrentUser(user);
-        const sortedProducts = [...prodData]
-          .filter(p => p.isActive)
-          .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
-        
-        setProducts(sortedProducts);
-        setSettings(storeSettings);
-
-        if (user) {
-          const week = storeSettings.currentPickupDate 
-            ? getWeekLabel(new Date(storeSettings.currentPickupDate)) 
-            : getWeekLabel(new Date());
-          const prev = await ApiService.getOrdersForUser(`${user.firstName} ${user.lastName}`, week);
-          setPreviousOrder(prev);
-        }
-      } catch (err: any) {
-        console.error("Fehler beim Laden im Shop:", err);
-      } finally {
-        if (active) setIsLoading(false);
+      if (user) {
+        const week = storeSettings.currentPickupDate 
+          ? getWeekLabel(new Date(storeSettings.currentPickupDate)) 
+          : getWeekLabel(new Date());
+        const prev = await ApiService.getOrdersForUser(`${user.firstName} ${user.lastName}`, week);
+        setPreviousOrder(prev);
       }
-    };
+    } catch (err: any) {
+      console.error("Fehler beim Laden im Shop:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
     loadInitialData();
-    return () => { active = false; };
   }, []);
 
   const calculateTotalToPay = (product: Product, quantity: number): number => {
@@ -121,16 +122,14 @@ const Shop: React.FC = () => {
         ? getWeekLabel(new Date(settings.currentPickupDate)) 
         : getWeekLabel(new Date());
         
-      const order = await ApiService.submitOrder(user, newItems, totalCombinedTotal, week);
+      const order = await ApiService.submitOrder(user, newItems, totalCombinedTotal, week, isShipping);
       
-      // Warenkorb leeren nach Erfolg
       setCart({});
       setIsCheckoutOpen(false);
-      
       navigate('/success', { state: { order, newItems: newItems } });
     } catch (err: any) {
       console.error("Bestellfehler:", err);
-      alert(err.message || 'Hoppla! Da ist beim Ernten etwas schiefgegangen. Bitte versuche es nochmal.');
+      alert(err.message || 'Fehler bei der Bestellung. Bitte versuche es erneut.');
     } finally {
       setIsSubmitting(false);
     }
@@ -143,7 +142,7 @@ const Shop: React.FC = () => {
     </div>
   );
 
-  if (settings && !settings.isShopOpen) {
+  if (!settings.isShopOpen) {
     return (
       <div className="min-h-[70vh] flex items-center justify-center px-4 py-12">
         <div className="max-w-xl w-full bg-white rounded-[3.5rem] shadow-2xl border border-[#f5f2e8] p-10 sm:p-16 text-center overflow-hidden relative">
@@ -153,7 +152,7 @@ const Shop: React.FC = () => {
           </div>
           <h2 className="text-4xl font-[900] text-[#121a14] tracking-tighter uppercase leading-none mb-6">Hofpause!</h2>
           <p className="text-lg font-bold text-gray-600 mb-10 italic">
-            Wir wühlen gerade im Dreck und aktualisieren die Sorten für dich. <br/>Komm bald wieder!
+            Wir aktualisieren gerade das Angebot für dich. <br/>Komm bald wieder!
           </p>
           <div className="bg-[#fdfaf3] border-2 border-dashed border-gray-200 rounded-3xl p-8 mb-8">
             <p className="text-[10px] font-black text-[#1a4d2e] uppercase tracking-[0.2em] mb-2">Shop öffnet wieder:</p>
@@ -176,22 +175,32 @@ const Shop: React.FC = () => {
         </h2>
         <div className="max-w-xl mx-auto mb-10">
           <p className="text-xl font-bold text-gray-900 mb-6 italic">
-            Nächste Ernte: <span className="text-[#1a4d2e] not-italic">{settings?.currentPickupDate ? new Date(settings.currentPickupDate).toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: '2-digit' }) : 'Demnächst'}</span>
+            Nächste Ernte: <span className="text-[#1a4d2e] not-italic">{settings.currentPickupDate ? new Date(settings.currentPickupDate).toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: '2-digit' }) : 'Demnächst'}</span>
           </p>
           <div className="h-1.5 w-16 bg-[#1a4d2e] mx-auto rounded-full"></div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
-        {products.map(product => (
-          <ProductCard
-            key={product.id}
-            product={product}
-            quantityInCart={cart[product.id] || 0}
-            onUpdateQuantity={(qty) => handleUpdateQuantity(product.id, qty)}
-          />
-        ))}
-      </div>
+      {products.length === 0 ? (
+        <div className="text-center py-20 bg-white rounded-[3rem] border-2 border-dashed border-gray-100">
+           <Sprout className="w-12 h-12 text-gray-200 mx-auto mb-4" />
+           <p className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-6">Der Acker ist gerade leer...</p>
+           <button onClick={loadInitialData} className="inline-flex items-center gap-2 bg-[#1a4d2e] text-white px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl hover:bg-black transition-all">
+             <RefreshCcw className="w-4 h-4" /> Seite neu laden
+           </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
+          {products.map(product => (
+            <ProductCard
+              key={product.id}
+              product={product}
+              quantityInCart={cart[product.id] || 0}
+              onUpdateQuantity={(qty) => handleUpdateQuantity(product.id, qty)}
+            />
+          ))}
+        </div>
+      )}
 
       {cartCount > 0 && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 w-full max-w-xs px-4">
@@ -200,7 +209,7 @@ const Shop: React.FC = () => {
               <div className="bg-[#1a4d2e] text-white w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-black">{cartCount}</div>
             </div>
             <div className="bg-[#1a4d2e] text-white py-3 px-8 rounded-full font-black text-[10px] uppercase tracking-widest flex items-center gap-2">
-              {previousOrder ? 'Beute erweitern' : 'Beute prüfen'} <ArrowRight className="w-3 h-3" />
+              Bestellung prüfen <ArrowRight className="w-3 h-3" />
             </div>
           </button>
         </div>
@@ -222,7 +231,7 @@ const Shop: React.FC = () => {
               {previousOrder && (
                 <div className="bg-gray-50 border-2 border-dashed border-gray-200 rounded-[2rem] p-6">
                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                    <History className="w-4 h-4" /> Schon in der Vorratskammer:
+                    <History className="w-4 h-4" /> Schon reserviert:
                   </p>
                   <div className="space-y-2">
                     {previousOrder.items.map((item, idx) => (
@@ -231,17 +240,13 @@ const Shop: React.FC = () => {
                         <span className="tabular-nums">{(item.priceAtOrder * item.quantity).toFixed(2)} €</span>
                       </div>
                     ))}
-                    <div className="pt-2 border-t border-gray-100 flex justify-between text-[10px] font-black uppercase text-gray-400">
-                        <span>Zwischenstand:</span>
-                        <span>{previousOrder.totalAmount.toFixed(2)} €</span>
-                    </div>
                   </div>
                 </div>
               )}
 
               <div className="bg-[#fdfaf3] rounded-[2rem] p-8 border-2 border-[#1a4d2e]/10">
                 <p className="text-[10px] font-black text-[#1a4d2e] uppercase tracking-widest mb-6 flex items-center gap-2">
-                  <ShoppingCart className="w-4 h-4" /> Neu vom Acker dazu:
+                  <ShoppingCart className="w-4 h-4" /> Neu dazu:
                 </p>
                 <div className="space-y-4 mb-8">
                   {Object.entries(cart).map(([id, qty]) => {
@@ -262,8 +267,50 @@ const Shop: React.FC = () => {
                 </div>
                 
                 <div className="pt-6 border-t border-gray-200 space-y-4">
+                   <div className="bg-white border-2 border-[#1a4d2e]/10 rounded-2xl p-6 space-y-4">
+                      <p className="text-[10px] font-black text-[#1a4d2e] uppercase tracking-widest flex items-center gap-2">
+                        <MapPin className="w-4 h-4" /> Erhalt der Ware:
+                      </p>
+                      <div className="grid grid-cols-2 gap-3">
+                        <button 
+                          type="button" 
+                          onClick={() => setIsShipping(false)}
+                          className={`py-4 rounded-xl font-black text-[10px] uppercase tracking-widest border-2 transition-all ${!isShipping ? 'bg-[#1a4d2e] text-white border-transparent shadow-lg' : 'bg-white text-gray-400 border-gray-100 hover:border-[#1a4d2e]/30'}`}
+                        >
+                          Abholung
+                        </button>
+                        <button 
+                          type="button" 
+                          onClick={() => setIsShipping(true)}
+                          className={`py-4 rounded-xl font-black text-[10px] uppercase tracking-widest border-2 transition-all ${isShipping ? 'bg-[#1a4d2e] text-white border-transparent shadow-lg' : 'bg-white text-gray-400 border-gray-100 hover:border-[#1a4d2e]/30'}`}
+                        >
+                          Versand
+                        </button>
+                      </div>
+                      
+                      {isShipping && (
+                        <div className="bg-orange-50 border border-orange-100 p-4 rounded-xl space-y-2">
+                          <p className="text-[9px] font-black text-orange-700 uppercase tracking-widest leading-tight">
+                            Info zum Versand:
+                          </p>
+                          <p className="text-[10px] font-bold text-orange-900 leading-relaxed">
+                            • Versand erfolgt meistens am <span className="underline">Donnerstag</span>.<br/>
+                            • Kosten: 2€ bis 5€ (je nach Entfernung).<br/>
+                            • Ich melde mich persönlich bei dir für die Details!
+                          </p>
+                        </div>
+                      )}
+                      {!isShipping && (
+                        <div className="bg-green-50 border border-green-100 p-4 rounded-xl">
+                          <p className="text-[10px] font-bold text-green-900 leading-relaxed">
+                            Abholung am Feld (Mittwoch ab {settings.pickupTime || '17:00'} Uhr).
+                          </p>
+                        </div>
+                      )}
+                   </div>
+
                    <div className="flex justify-between items-end">
-                      <div className="text-[11px] font-black text-gray-500 uppercase tracking-widest leading-none">Hof-Rechnung (Gesamt):</div>
+                      <div className="text-[11px] font-black text-gray-500 uppercase tracking-widest leading-none">Gesamtbetrag:</div>
                       <div className="text-right">
                         <span className="text-4xl font-black text-[#1a4d2e] tabular-nums leading-none">
                             {((previousOrder?.totalAmount || 0) + cartTotal).toFixed(2)} €
@@ -287,12 +334,12 @@ const Shop: React.FC = () => {
               ) : (
                 <div className="bg-[#1a4d2e]/5 p-6 rounded-2xl border border-[#1a4d2e]/10 text-center relative">
                   <button type="button" onClick={handleSwitchUser} className="absolute top-4 right-4 text-[#1a4d2e] hover:text-black transition-colors" title="Nutzer wechseln"><UserPlus className="w-4 h-4" /></button>
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Reserviert auf:</p>
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Reserviert für:</p>
                   <p className="text-xl font-black uppercase tracking-tight text-[#1a4d2e]">{currentUser.firstName} {currentUser.lastName}</p>
                 </div>
               )}
               <button type="submit" disabled={isSubmitting} className="w-full bg-[#1a4d2e] text-white py-6 rounded-2xl font-black uppercase tracking-widest shadow-xl flex items-center justify-center gap-3 hover:bg-black transition-all active:scale-95">
-                {isSubmitting ? <Loader2 className="w-6 h-6 animate-spin" /> : <><Tractor className="w-5 h-5" /> Ernte verbindlich reservieren</>}
+                {isSubmitting ? <Loader2 className="w-6 h-6 animate-spin" /> : <><Tractor className="w-5 h-5" /> Verbindlich reservieren</>}
               </button>
             </form>
           </div>
