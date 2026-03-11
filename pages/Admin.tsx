@@ -5,7 +5,7 @@ import { Product, Order, TabView, StoreSettings } from '../types';
 import { 
   Lock, Trash2, Edit2, Plus, LogOut, Loader2, UserCircle, CheckSquare, Square, 
   Save, ClipboardList, X, Wifi, WifiOff, RefreshCcw, Tractor, Calendar, Settings, Power, 
-  ArrowUp, ArrowDown, Upload, Image as ImageIcon, Zap, Tag, Eye, EyeOff
+  ArrowUp, ArrowDown, Upload, Image as ImageIcon, Zap, Tag, Eye, EyeOff, MapPin
 } from 'lucide-react';
 
 const ADMIN_PIN = '5719';
@@ -209,7 +209,18 @@ const Admin: React.FC = () => {
                  <div key={o.id} className="border-2 rounded-[1.5rem] border-[#f5f2e8] bg-[#fdfbf7] overflow-hidden">
                     <button onClick={() => setExpandedOrderId(expandedOrderId === o.id ? null : o.id)} className="w-full flex justify-between items-center p-5 hover:bg-white">
                       <div className="text-left">
-                        <h4 className="text-lg font-black uppercase tracking-tighter text-black">{o.customerName}</h4>
+                        <h4 className="text-lg font-black uppercase tracking-tighter text-black flex items-center gap-2">
+                          {o.customerName}
+                          {o.isShipping ? (
+                            <span className="bg-orange-100 text-orange-700 text-[8px] px-2 py-0.5 rounded-full flex items-center gap-1">
+                              <Upload className="w-2 h-2 rotate-90" /> Versand
+                            </span>
+                          ) : (
+                            <span className="bg-green-100 text-green-700 text-[8px] px-2 py-0.5 rounded-full flex items-center gap-1">
+                              <MapPin className="w-2 h-2" /> Abholung
+                            </span>
+                          )}
+                        </h4>
                         <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{o.totalAmount.toFixed(2)}€ • {o.items?.length} Sorten</p>
                       </div>
                       <div className={`px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest ${o.items?.every(i => i.packed) ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
