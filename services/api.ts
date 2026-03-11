@@ -128,18 +128,92 @@ export const ApiService = {
     }
   },
 
-  async submitOrder(user: Customer, items: OrderItem[], totalAmount: number, weekLabel: string): Promise<Order> {
+  async submitOrder(user: Customer, items: OrderItem[], totalAmount: number, weekLabel: string, isShipping: boolean = false): Promise<Order> {
+    const customerName = `${user.firstName} ${user.lastName}`;
+    
     if (supabase) {
-      const { data, error } = await supabase.from('orders').insert({
-        customer_name: `${user.firstName} ${user.lastName}`,
-        items: items,
-        total_amount: totalAmount,
-        week_label: weekLabel
-      }).select().single();
-      if (error) throw error;
-      return mapOrder(data);
+      // Check if order exists for this week to merge
+      const { data: existingOrder } = await supabase
+        .from('orders')
+        .select('*')
+        .ilike('customer_name', customerName.trim())
+        .eq('week_label', weekLabel)
+        .maybeSingle();
+
+      if (existingOrder) {
+        // Merge items
+        const mergedItems = [...existingOrder.items];
+        items.forEach(newItem => {
+          const existingItemIdx = mergedItems.findIndex(i => i.productId === newItem.productId);
+          if (existingItemIdx > -1) {
+            mergedItems[existingItemIdx].quantity += newItem.quantity;
+            // Reset packed status if new items added? Usually yes.
+            mergedItems[existingItemIdx].packed = false;
+          } else {
+            mergedItems.push(newItem);
+          }
+        });
+
+        const { data, error } = await supabase
+          .from('orders')
+          .update({
+            items: mergedItems,
+            total_amount: totalAmount,
+            is_shipping: isShipping // Update shipping preference
+          })
+          .eq('id', existingOrder.id)
+          .select()
+          .single();
+        
+        if (error) throw error;
+        return mapOrder(data);
+      } else {
+        // Create new
+        const { data, error } = await supabase.from('orders').insert({
+          customer_name: customerName,
+          items: items,
+          total_amount: totalAmount,
+          week_label: weekLabel,
+          is_shipping: isShipping
+        }).select().single();
+        if (error) throw error;
+        return mapOrder(data);
+      }
     }
-    return { id: 'mock', customerName: 'test', createdAt: '', weekLabel, items, totalAmount };
+
+    // Mock implementation
+    const orders = JSON.parse(localStorage.getItem('eifel_gemuese_orders_mock') || '[]');
+    const existingIdx = orders.findIndex((o: any) => o.customerName === customerName && o.weekLabel === weekLabel);
+    
+    if (existingIdx > -1) {
+      const existing = orders[existingIdx];
+      const mergedItems = [...existing.items];
+      items.forEach(newItem => {
+        const existingItemIdx = mergedItems.findIndex(i => i.productId === newItem.productId);
+        if (existingItemIdx > -1) {
+          mergedItems[existingItemIdx].quantity += newItem.quantity;
+          mergedItems[existingItemIdx].packed = false;
+        } else {
+          mergedItems.push(newItem);
+        }
+      });
+      orders[existingIdx] = { ...existing, items: mergedItems, totalAmount, isShipping };
+      localStorage.setItem('eifel_gemuese_orders_mock', JSON.stringify(orders));
+      return orders[existingIdx];
+    }
+
+    const newOrder = { 
+      id: 'mock-' + Date.now(), 
+      customerName, 
+      createdAt: new Date().toISOString(), 
+      weekLabel, 
+      items, 
+      totalAmount,
+      isShipping
+    };
+    orders.push(newOrder);
+    localStorage.setItem('eifel_gemuese_orders_mock', JSON.stringify(orders));
+    return newOrder;
   },
 
   async saveSettings(s: StoreSettings) {
@@ -210,5 +284,7 @@ const mapOrder = (o: any): Order => ({
   createdAt: o.created_at ?? o.createdAt,
   weekLabel: o.week_label ?? o.weekLabel,
   totalAmount: Number(o.total_amount ?? o.totalAmount ?? 0),
-  items: o.items || []
+  items: o.items || [],
+  isShipping: o.is_shipping ?? o.isShipping ?? false,
+  shippingCost: o.shipping_cost ?? o.shippingCost ?? 0
 });
