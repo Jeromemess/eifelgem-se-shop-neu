@@ -3,9 +3,8 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { Product, Order, StoreSettings, Customer, OrderItem } from '../types';
 
 const getEnvVar = (key: string): string => {
-  return (import.meta as any).env?.[key] || 
-          (process as any).env?.[key] || 
-          (window as any)?._env_?.[key] || 
+  return (import.meta as any).env?.[key] ||
+          (window as any)?._env_?.[key] ||
           '';
 };
 
@@ -144,13 +143,13 @@ export const ApiService = {
       const existingOrder = existingOrders && existingOrders.length > 0 ? existingOrders[0] : null;
 
       if (existingOrder) {
-        // Artikel zusammenführen
+        // Artikel zusammenführen — packed-Status bleibt erhalten (Admin hat ggf. schon gepackt)
         const mergedItems = [...existingOrder.items];
         items.forEach(newItem => {
           const existingItemIdx = mergedItems.findIndex(i => i.productId === newItem.productId);
           if (existingItemIdx > -1) {
             mergedItems[existingItemIdx].quantity += newItem.quantity;
-            mergedItems[existingItemIdx].packed = false;
+            // packed NICHT zurücksetzen — der Bauer sieht die Menge und packt nach
           } else {
             mergedItems.push(newItem);
           }
@@ -193,7 +192,7 @@ export const ApiService = {
         const existingItemIdx = mergedItems.findIndex(i => i.productId === newItem.productId);
         if (existingItemIdx > -1) {
           mergedItems[existingItemIdx].quantity += newItem.quantity;
-          mergedItems[existingItemIdx].packed = false;
+          // packed-Status erhalten
         } else {
           mergedItems.push(newItem);
         }
@@ -260,7 +259,10 @@ export const ApiService = {
       const { data } = await supabase.from('orders').select('*').ilike('customer_name', customerName.trim()).eq('week_label', weekLabel).maybeSingle();
       return data ? mapOrder(data) : null;
     }
-    return null;
+    // Mock-Modus: aus localStorage laden
+    const orders: Order[] = JSON.parse(localStorage.getItem('eifel_gemuese_orders_mock') || '[]');
+    const found = orders.find(o => o.customerName.startsWith(customerName.trim()) && o.weekLabel === weekLabel);
+    return found || null;
   }
 };
 

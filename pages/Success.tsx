@@ -54,85 +54,85 @@ const Success: React.FC = () => {
   const newlyTotal = newlyAdded.reduce((sum, item) => sum + (item.priceAtOrder * item.quantity), 0);
 
   return (
-    <div className="min-h-[85vh] flex items-center justify-center px-4 py-8 bg-[#fdfbf7] pb-24">
-      <div className="max-w-2xl w-full bg-white rounded-[3rem] shadow-2xl border border-[#f5f2e8] overflow-hidden animate-in fade-in zoom-in-95 duration-500">
-        
-        <div className="bg-[#1a4d2e] p-10 text-center text-white relative">
+    <div className="min-h-[85vh] flex items-center justify-center px-4 py-8 pb-24" style={{backgroundColor: 'var(--eifel-beige)'}}>
+      <div className="max-w-2xl w-full bg-white rounded-[3rem] overflow-hidden" style={{boxShadow: '0 32px 80px rgba(0,40,32,.18)', border: '1px solid var(--eifel-beige-dark)'}}>
+
+        <div className="p-10 text-center text-white relative" style={{backgroundColor: 'var(--eifel-dark)'}}>
           <div className="absolute top-4 right-6 opacity-10 rotate-12">
-             <Tractor className="w-24 h-24" />
+            <Tractor className="w-24 h-24" />
           </div>
           <CheckCircle className="w-16 h-16 text-white mx-auto mb-6 drop-shadow-lg" />
-          <h2 className="text-3xl font-black uppercase tracking-tighter mb-4 leading-[0.9]">
+          <h2 className="font-display text-3xl font-semibold italic mb-4 leading-tight">
             Saubere Arbeit!<br/>
-            Jèrôme zieht schon seine Gummistiefel an...
+            Jèrôme zieht schon seine Gummistiefel an…
           </h2>
-          <p className="text-lg font-bold italic opacity-90 px-4">
-            ...und ist schon auf dem Weg zum Acker, um deine Beute zu fassen!
+          <p className="text-lg italic opacity-90 px-4">
+            …und ist schon auf dem Weg zum Acker, um deine Beute zu fassen!
           </p>
         </div>
 
         <div className="p-8 sm:p-12">
           {pickupInfo && (
-            <div className="bg-[#fdfaf3] border border-[#f5f2e8] rounded-[2.5rem] p-8 mb-10 text-center shadow-inner relative overflow-hidden">
-                <Calendar className="w-8 h-8 text-[#1a4d2e] mx-auto mb-4" />
-                <p className="text-gray-400 text-[9px] uppercase font-black tracking-widest mb-1">Deine Abholzeit am Hof</p>
-                <p className="text-2xl font-black text-[#1a4d2e] tracking-tight">{pickupInfo.day}, {pickupInfo.dateStr}</p>
-                <p className="text-gray-900 font-bold mt-1 text-lg">ab {pickupInfo.time} Uhr</p>
+            <div className="rounded-[2.5rem] p-8 mb-10 text-center relative overflow-hidden" style={{backgroundColor: 'var(--eifel-beige)', border: '1px solid var(--eifel-beige-dark)'}}>
+              <Calendar className="w-8 h-8 mx-auto mb-4" style={{color: 'var(--eifel-dark)'}} />
+              <p className="text-[9px] uppercase font-semibold tracking-widest mb-1" style={{color: 'var(--eifel-text-muted)'}}>Deine Abholzeit am Hof</p>
+              <p className="font-display text-2xl font-semibold" style={{color: 'var(--eifel-dark)'}}>{pickupInfo.day}, {pickupInfo.dateStr}</p>
+              <p className="font-medium mt-1 text-lg" style={{color: 'var(--eifel-text)'}}>ab {pickupInfo.time} Uhr</p>
             </div>
           )}
 
           <div className="mb-10 space-y-10">
             <div className="flex flex-col items-center pb-6 border-b border-gray-100">
-               <span className="text-[9px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1">Beute reserviert für</span>
-               <span className="text-2xl font-black text-black uppercase tracking-tighter border-b-4 border-[#1a4d2e]/20">{order.customerName}</span>
+              <span className="text-[9px] font-semibold uppercase tracking-[0.2em] mb-1" style={{color: 'var(--eifel-text-muted)'}}>Reserviert für</span>
+              <span className="font-display text-2xl font-semibold" style={{color: 'var(--eifel-dark)', borderBottom: '3px solid rgba(0,80,64,0.2)', paddingBottom: '2px'}}>{order.customerName}</span>
             </div>
 
             <div className="space-y-5">
-              <h4 className="flex items-center gap-3 text-[11px] font-black uppercase tracking-widest text-[#1a4d2e]">
-                <div className="w-8 h-8 rounded-full bg-[#1a4d2e] text-white flex items-center justify-center">
+              <h4 className="flex items-center gap-3 text-[11px] font-semibold uppercase tracking-widest" style={{color: 'var(--eifel-dark)'}}>
+                <div className="w-8 h-8 rounded-full text-white flex items-center justify-center" style={{backgroundColor: 'var(--eifel-dark)'}}>
                   <PlusCircle className="w-4 h-4" />
                 </div>
                 Neu dazugepackt:
               </h4>
-              <div className="bg-[#1a4d2e]/5 rounded-3xl p-6 border border-[#1a4d2e]/10">
+              <div className="rounded-3xl p-6" style={{backgroundColor: 'rgba(0,80,64,0.05)', border: '1px solid rgba(0,80,64,0.1)'}}>
                 <ul className="space-y-4">
                   {newlyAdded.map((item, idx) => (
                     <li key={idx} className="flex justify-between items-center">
                       <div className="flex items-center gap-4">
-                        <span className="w-10 h-10 flex items-center justify-center bg-white rounded-xl text-sm font-black text-[#1a4d2e] shadow-sm">
+                        <span className="w-10 h-10 flex items-center justify-center bg-white rounded-xl text-sm font-bold shadow-sm" style={{color: 'var(--eifel-dark)'}}>
                           {item.quantity}x
                         </span>
-                        <span className="text-lg font-black text-gray-800 uppercase tracking-tighter">{item.productName}</span>
+                        <span className="font-display text-lg font-semibold" style={{color: 'var(--eifel-text)'}}>{item.productName}</span>
                       </div>
-                      <span className="text-gray-400 text-sm font-black tabular-nums">{(item.priceAtOrder * item.quantity).toFixed(2)} €</span>
+                      <span className="text-sm font-medium tabular-nums" style={{color: 'var(--eifel-text-muted)'}}>{(item.priceAtOrder * item.quantity).toFixed(2)} €</span>
                     </li>
                   ))}
                 </ul>
-                <div className="mt-4 pt-4 border-t border-[#1a4d2e]/10 flex justify-between text-[10px] font-black uppercase text-[#1a4d2e]">
-                    <span>Wert der neuen Ernte:</span>
-                    <span>{newlyTotal.toFixed(2)} €</span>
+                <div className="mt-4 pt-4 flex justify-between text-[10px] font-semibold uppercase" style={{borderTop: '1px solid rgba(0,80,64,0.1)', color: 'var(--eifel-dark)'}}>
+                  <span>Wert der neuen Ernte:</span>
+                  <span>{newlyTotal.toFixed(2)} €</span>
                 </div>
               </div>
             </div>
 
             {isFollowUpOrder && (
               <div className="space-y-5 pt-4">
-                <h4 className="flex items-center gap-3 text-[11px] font-black uppercase tracking-widest text-gray-400">
+                <h4 className="flex items-center gap-3 text-[11px] font-semibold uppercase tracking-widest text-gray-400">
                   <div className="w-8 h-8 rounded-full bg-gray-100 text-gray-400 flex items-center justify-center">
                     <History className="w-4 h-4" />
                   </div>
                   Schon vorher in deiner Kiste:
                 </h4>
-                <div className="bg-gray-50/50 rounded-3xl p-6 border border-gray-100">
+                <div className="rounded-3xl p-6 border border-gray-100 bg-gray-50/50">
                   <ul className="space-y-3">
                     {previousItems.map((item, idx) => (
                       <li key={idx} className="flex justify-between items-center opacity-60">
-                        <span className="font-bold text-sm text-gray-500">{item.quantity}x {item.productName}</span>
-                        <span className="tabular-nums text-xs font-bold">{(item.priceAtOrder * item.quantity).toFixed(2)} €</span>
+                        <span className="font-medium text-sm text-gray-500">{item.quantity}x {item.productName}</span>
+                        <span className="tabular-nums text-xs font-medium">{(item.priceAtOrder * item.quantity).toFixed(2)} €</span>
                       </li>
                     ))}
                   </ul>
-                  <div className="mt-3 pt-3 border-t border-gray-100 flex justify-between text-[9px] font-black uppercase text-gray-400">
+                  <div className="mt-3 pt-3 border-t border-gray-100 flex justify-between text-[9px] font-semibold uppercase text-gray-400">
                     <span>Vorheriger Stand:</span>
                     <span>{previousTotal.toFixed(2)} €</span>
                   </div>
@@ -140,20 +140,25 @@ const Success: React.FC = () => {
               </div>
             )}
 
-            <div className="pt-8 flex flex-col items-center border-t-2 border-[#f5f2e8] mt-8 bg-[#121a14] text-white rounded-[3rem] p-10 shadow-2xl relative overflow-hidden">
+            <div className="flex flex-col items-center rounded-[3rem] p-10 shadow-2xl relative overflow-hidden text-white" style={{backgroundColor: 'var(--eifel-dark-2)'}}>
               <div className="absolute top-0 left-0 w-full h-1 bg-white/10"></div>
-              <span className="font-black text-[#1a4d2e] uppercase tracking-[0.3em] text-[10px] mb-2">Hof-Rechnung (Gesamt)</span>
-              <span className="font-black text-6xl tracking-tighter tabular-nums flex items-start">
+              <span className="font-semibold uppercase tracking-[0.3em] text-[10px] mb-1" style={{color: 'var(--eifel-green)'}}>Hof-Rechnung (Gesamt)</span>
+              <span className="text-[9px] opacity-50 uppercase tracking-widest mb-3">alle Artikel zusammen</span>
+              <span className="font-display font-semibold text-6xl tracking-tight tabular-nums flex items-start">
                 {order.totalAmount.toFixed(2)} <span className="text-2xl mt-2 ml-1">€</span>
               </span>
-              <div className="mt-6 px-6 py-3 bg-[#1a4d2e] rounded-full border border-white/10 flex items-center gap-3 shadow-lg">
+              <div className="mt-6 px-6 py-3 rounded-full border border-white/10 flex items-center gap-3 shadow-lg" style={{backgroundColor: 'var(--eifel-dark)'}}>
                 <Banknote className="w-5 h-5 text-white" />
-                <p className="text-[10px] font-black uppercase tracking-widest">Barzahlung direkt am Feld</p>
+                <p className="text-[10px] font-semibold uppercase tracking-widest">Barzahlung direkt am Feld</p>
               </div>
             </div>
           </div>
 
-          <Link to="/" className="w-full text-center bg-[#1a4d2e] text-white font-black py-6 rounded-2xl transition-all flex items-center justify-center gap-3 uppercase tracking-widest text-xs shadow-xl shadow-[#1a4d2e]/20 hover:bg-black active:scale-95">
+          <Link
+            to="/"
+            className="w-full text-center text-white font-semibold py-5 rounded-2xl transition-all flex items-center justify-center gap-3 uppercase tracking-widest text-xs active:scale-95"
+            style={{backgroundColor: 'var(--eifel-dark)', boxShadow: '0 6px 24px rgba(0,40,32,.18)'}}
+          >
             <ArrowLeft className="w-5 h-5" /> Zurück zum Acker für mehr Beute!
           </Link>
         </div>

@@ -63,7 +63,9 @@ const INITIAL_SETTINGS: StoreSettings = {
   pickupTime: '17:00',
   openDay: 'Sonntag',
   maxSlots: 50,
-  currentPickupDate: new Date().toISOString().split('T')[0]
+  currentPickupDate: new Date().toISOString().split('T')[0],
+  isShopOpen: true,
+  nextOpeningText: '',
 };
 
 export const MockDB = {
@@ -156,7 +158,8 @@ export const MockDB = {
     if (!stored) {
       return INITIAL_SETTINGS;
     }
-    return JSON.parse(stored);
+    // Merge mit INITIAL_SETTINGS damit neue Felder (isShopOpen etc.) immer vorhanden sind
+    return { ...INITIAL_SETTINGS, ...JSON.parse(stored) };
   },
 
   saveSettings: (settings: StoreSettings): void => {

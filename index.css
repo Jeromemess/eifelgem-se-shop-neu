@@ -1,0 +1,41 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --eifel-green:       #70A020;
+  --eifel-green-dark:  #588018;
+  --eifel-dark:        #005040;
+  --eifel-dark-2:      #003830;
+  --eifel-beige:       #F0F0E0;
+  --eifel-beige-dark:  #E2E2CE;
+  --eifel-beige-darker:#D4D4BC;
+  --eifel-orange:      #F0A020;
+  --eifel-teal:        #20A0A0;
+  --eifel-text:        #1A2A1A;
+  --eifel-text-muted:  #5A6A58;
+}
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background-color: var(--eifel-beige);
+  color: var(--eifel-text);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+  line-height: 1.7;
+}
+
+h1, h2, h3 {
+  font-family: 'Playfair Display', Georgia, serif;
+}
+
+::-webkit-scrollbar { width: 10px; }
+::-webkit-scrollbar-track { background: var(--eifel-beige); }
+::-webkit-scrollbar-thumb {
+  background: var(--eifel-beige-darker);
+  border-radius: 20px;
+  border: 3px solid var(--eifel-beige);
+}
+
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }

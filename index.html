@@ -4,50 +4,11 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Eifelgemüse - Kleines Grün. Große Wirkung.</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
-    <style>
-      :root {
-        --eifel-green: #1a4d2e;
-        --eifel-sage: #88a270;
-        --eifel-beige: #fdfaf3;
-        --eifel-clay: #f2ede1;
-        --eifel-black: #121a14;
-      }
-      body {
-        font-family: 'Inter', sans-serif;
-        background-color: var(--eifel-beige);
-        color: var(--eifel-black);
-        -webkit-font-smoothing: antialiased;
-        overflow-x: hidden;
-        margin: 0;
-      }
-      .bg-eifel-green { background-color: var(--eifel-green); }
-      .text-eifel-green { color: var(--eifel-green); }
-      
-      .transition-all { transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
-      
-      ::-webkit-scrollbar { width: 10px; }
-      ::-webkit-scrollbar-track { background: var(--eifel-beige); }
-      ::-webkit-scrollbar-thumb { background: #dcd7c5; border-radius: 20px; border: 3px solid var(--eifel-beige); }
-
-      .no-scrollbar::-webkit-scrollbar { display: none; }
-    </style>
-  <script type="importmap">
-{
-  "imports": {
-    "react": "https://esm.sh/react@^19.2.4",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
-    "react/": "https://esm.sh/react@^19.2.4/",
-    "react-router-dom": "https://esm.sh/react-router-dom@^7.13.0",
-    "lucide-react": "https://esm.sh/lucide-react@^0.564.0",
-    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@^2.95.3",
-    "vite": "https://esm.sh/vite@^7.3.1",
-    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.4"
-  }
-}
-</script>
-</head>
+    <!-- Fonts: preconnect für schnelleres Laden, font-display=swap verhindert unsichtbaren Text -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap&display=swap" rel="stylesheet" />
+  </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
