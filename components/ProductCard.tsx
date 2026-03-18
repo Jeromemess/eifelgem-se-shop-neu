@@ -7,7 +7,7 @@ import { calcUnitPrice } from '../utils/price';
 interface ProductCardProps {
   product: Product;
   quantityInCart: number;
-  onUpdateQuantity: (newQuantity: number) => void;
+  onUpdateQuantity: (productId: string, newQuantity: number) => void;
 }
 
 const ProductCard: React.FC<ProductCardProps> = memo(({ product, quantityInCart, onUpdateQuantity }) => {
@@ -90,7 +90,7 @@ const ProductCard: React.FC<ProductCardProps> = memo(({ product, quantityInCart,
         <div className="mt-auto flex items-center justify-between gap-3">
           <div className="flex items-center rounded-2xl p-1" style={{ backgroundColor: 'var(--eifel-beige)', border: '1px solid var(--eifel-beige-darker)' }}>
             <button
-              onClick={() => quantityInCart > 0 && onUpdateQuantity(quantityInCart - 1)}
+              onClick={() => quantityInCart > 0 && onUpdateQuantity(product.id, quantityInCart - 1)}
               disabled={quantityInCart === 0 || isOutOfStock}
               aria-label="Weniger"
               className="w-10 h-10 rounded-xl flex items-center justify-center transition-all active:scale-90 disabled:opacity-30"
@@ -100,7 +100,7 @@ const ProductCard: React.FC<ProductCardProps> = memo(({ product, quantityInCart,
             </button>
             <span className="font-bold text-lg w-9 text-center tabular-nums" style={{ color: 'var(--eifel-text)' }}>{quantityInCart}</span>
             <button
-              onClick={() => quantityInCart < product.stockQuantity && onUpdateQuantity(quantityInCart + 1)}
+              onClick={() => quantityInCart < product.stockQuantity && onUpdateQuantity(product.id, quantityInCart + 1)}
               disabled={quantityInCart >= product.stockQuantity || isOutOfStock}
               aria-label="Mehr"
               className="w-10 h-10 rounded-xl flex items-center justify-center transition-all active:scale-90 disabled:opacity-30"

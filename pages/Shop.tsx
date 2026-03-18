@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
 import { ApiService, getWeekLabel } from '../services/api';
@@ -74,13 +74,13 @@ const Shop: React.FC = () => {
 
   const cartCount = Object.values(cart).reduce<number>((a, b) => Number(a) + Number(b), 0);
 
-  const handleUpdateQuantity = (productId: string, qty: number) => {
+  const handleUpdateQuantity = useCallback((productId: string, qty: number) => {
     setCart(prev => {
       const next = { ...prev, [productId]: qty };
       if (qty <= 0) delete next[productId];
       return next;
     });
-  };
+  }, []);
 
   const handleSwitchUser = () => {
     setCurrentUser(null);
@@ -213,7 +213,7 @@ const Shop: React.FC = () => {
               key={product.id}
               product={product}
               quantityInCart={cart[product.id] || 0}
-              onUpdateQuantity={(qty) => handleUpdateQuantity(product.id, qty)}
+              onUpdateQuantity={handleUpdateQuantity}
             />
           ))}
         </div>
