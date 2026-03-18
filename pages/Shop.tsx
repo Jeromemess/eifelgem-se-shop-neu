@@ -266,7 +266,7 @@ const Shop: React.FC = () => {
                     return (
                       <div key={id} className="flex justify-between items-center rounded-xl px-4 py-3 bg-white" style={{border: '1px solid rgba(112,160,32,0.2)'}}>
                         <div className="flex items-center gap-3">
-                          <span className="text-[9px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full" style={{backgroundColor: 'rgba(112,160,32,0.15)', color: 'var(--eifel-green)'}}>+ neu</span>
+                          {previousOrder && <span className="text-[9px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full" style={{backgroundColor: 'rgba(112,160,32,0.15)', color: 'var(--eifel-green)'}}>+ neu</span>}
                           <span className="font-semibold text-lg" style={{color: 'var(--eifel-text)'}}>{qty}x {p.name}</span>
                         </div>
                         <span className="text-sm tabular-nums font-semibold" style={{color: 'var(--eifel-dark)'}}>{lineTotal.toFixed(2)} €</span>

@@ -64,7 +64,7 @@ const Success: React.FC = () => {
           <CheckCircle className="w-16 h-16 text-white mx-auto mb-6 drop-shadow-lg" />
           <h2 className="font-display text-3xl font-semibold italic mb-4 leading-tight">
             Saubere Arbeit!<br/>
-            Jèrôme zieht schon seine Gummistiefel an…
+            Jérôme zieht schon seine Gummistiefel an…
           </h2>
           <p className="text-lg italic opacity-90 px-4">
             …und ist schon auf dem Weg zum Acker, um deine Beute zu fassen!
@@ -92,7 +92,7 @@ const Success: React.FC = () => {
                 <div className="w-8 h-8 rounded-full text-white flex items-center justify-center" style={{backgroundColor: 'var(--eifel-dark)'}}>
                   <PlusCircle className="w-4 h-4" />
                 </div>
-                Neu dazugepackt:
+                {isFollowUpOrder ? 'Neu dazugepackt:' : 'Deine frische Kiste:'}
               </h4>
               <div className="rounded-3xl p-6" style={{backgroundColor: 'rgba(0,80,64,0.05)', border: '1px solid rgba(0,80,64,0.1)'}}>
                 <ul className="space-y-4">
