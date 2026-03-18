@@ -34,6 +34,15 @@ export const getWeekLabel = (date: Date): string => {
   return `KW ${weekNo}/${d.getUTCFullYear()}`;
 };
 
+async function deductStock(sb: SupabaseClient, items: OrderItem[]) {
+  await Promise.all(items.map(async item => {
+    const { data: prod } = await sb.from('products').select('stock_quantity').eq('id', item.productId).single();
+    if (!prod) return;
+    const newQty = Math.max(0, (prod.stock_quantity ?? 0) - item.quantity);
+    await sb.from('products').update({ stock_quantity: newQty }).eq('id', item.productId);
+  }));
+}
+
 export const ApiService = {
   isLive: () => !!supabase,
   
@@ -149,28 +158,24 @@ export const ApiService = {
           const existingItemIdx = mergedItems.findIndex(i => i.productId === newItem.productId);
           if (existingItemIdx > -1) {
             mergedItems[existingItemIdx].quantity += newItem.quantity;
-            // packed NICHT zurücksetzen — der Bauer sieht die Menge und packt nach
           } else {
             mergedItems.push(newItem);
           }
         });
 
-        // Gesamtbetrag = bestehende Bestellung + neue Artikel
-        // totalAmount enthält nur den Betrag der neuen Artikel (cartTotal aus Shop.tsx)
         const combinedTotal = Number(existingOrder.total_amount) + totalAmount;
 
         const { data, error } = await supabase
           .from('orders')
-          .update({
-            items: mergedItems,
-            total_amount: combinedTotal,
-            customer_name: customerName // Aktualisiere ggf. den Namen (falls sich Versandwunsch geändert hat)
-          })
+          .update({ items: mergedItems, total_amount: combinedTotal, customer_name: customerName })
           .eq('id', existingOrder.id)
           .select()
           .single();
-        
         if (error) throw error;
+
+        // Bestand für neu hinzugefügte Artikel reduzieren
+        await deductStock(supabase, items);
+
         return mapOrder(data);
       } else {
         // Neue Bestellung anlegen
@@ -181,6 +186,10 @@ export const ApiService = {
           week_label: weekLabel
         }).select().single();
         if (error) throw error;
+
+        // Bestand reduzieren
+        await deductStock(supabase, items);
+
         return mapOrder(data);
       }
     }
@@ -204,19 +213,37 @@ export const ApiService = {
       const combinedTotal = Number(existing.totalAmount) + totalAmount;
       orders[existingIdx] = { ...existing, items: mergedItems, totalAmount: combinedTotal, customerName };
       localStorage.setItem('eifel_gemuese_orders_mock', JSON.stringify(orders));
+
+      // Bestand für neu hinzugefügte Artikel reduzieren
+      const products = JSON.parse(localStorage.getItem('eifel_gemuese_products_mock') || '[]');
+      items.forEach((item: OrderItem) => {
+        const idx = products.findIndex((p: Product) => p.id === item.productId);
+        if (idx > -1) products[idx].stockQuantity = Math.max(0, (products[idx].stockQuantity ?? 0) - item.quantity);
+      });
+      localStorage.setItem('eifel_gemuese_products_mock', JSON.stringify(products));
+
       return orders[existingIdx];
     }
 
-    const newOrder = { 
-      id: 'mock-' + Date.now(), 
-      customerName, 
-      createdAt: new Date().toISOString(), 
-      weekLabel, 
-      items, 
+    const newOrder = {
+      id: 'mock-' + Date.now(),
+      customerName,
+      createdAt: new Date().toISOString(),
+      weekLabel,
+      items,
       totalAmount
     };
     orders.push(newOrder);
     localStorage.setItem('eifel_gemuese_orders_mock', JSON.stringify(orders));
+
+    // Bestand im Mock-Modus reduzieren
+    const products = JSON.parse(localStorage.getItem('eifel_gemuese_products_mock') || '[]');
+    items.forEach((item: OrderItem) => {
+      const idx = products.findIndex((p: Product) => p.id === item.productId);
+      if (idx > -1) products[idx].stockQuantity = Math.max(0, (products[idx].stockQuantity ?? 0) - item.quantity);
+    });
+    localStorage.setItem('eifel_gemuese_products_mock', JSON.stringify(products));
+
     return newOrder;
   },
 
