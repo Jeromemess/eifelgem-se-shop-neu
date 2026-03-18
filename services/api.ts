@@ -78,7 +78,7 @@ export const ApiService = {
     if (!supabase) {
       const products = await this.getProducts();
       if (!p.id || p.id.length < 5) p.id = 'p' + Date.now();
-      const idx = products.findIndex(prod => prod.id === p.id);
+      const idx = products.findIndex((prod: Product) => prod.id === p.id);
       if (idx > -1) products[idx] = p; else products.push(p);
       localStorage.setItem('eifel_gemuese_products_mock', JSON.stringify(products));
       return;
@@ -155,11 +155,15 @@ export const ApiService = {
           }
         });
 
+        // Gesamtbetrag = bestehende Bestellung + neue Artikel
+        // totalAmount enthält nur den Betrag der neuen Artikel (cartTotal aus Shop.tsx)
+        const combinedTotal = Number(existingOrder.total_amount) + totalAmount;
+
         const { data, error } = await supabase
           .from('orders')
           .update({
             items: mergedItems,
-            total_amount: totalAmount,
+            total_amount: combinedTotal,
             customer_name: customerName // Aktualisiere ggf. den Namen (falls sich Versandwunsch geändert hat)
           })
           .eq('id', existingOrder.id)
@@ -197,7 +201,8 @@ export const ApiService = {
           mergedItems.push(newItem);
         }
       });
-      orders[existingIdx] = { ...existing, items: mergedItems, totalAmount, customerName };
+      const combinedTotal = Number(existing.totalAmount) + totalAmount;
+      orders[existingIdx] = { ...existing, items: mergedItems, totalAmount: combinedTotal, customerName };
       localStorage.setItem('eifel_gemuese_orders_mock', JSON.stringify(orders));
       return orders[existingIdx];
     }
@@ -256,7 +261,7 @@ export const ApiService = {
   
   async getOrdersForUser(customerName: string, weekLabel: string): Promise<Order | null> {
     if (supabase) {
-      const { data } = await supabase.from('orders').select('*').ilike('customer_name', customerName.trim()).eq('week_label', weekLabel).maybeSingle();
+      const { data } = await supabase.from('orders').select('*').ilike('customer_name', `${customerName.trim()}%`).eq('week_label', weekLabel).maybeSingle();
       return data ? mapOrder(data) : null;
     }
     // Mock-Modus: aus localStorage laden

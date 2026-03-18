@@ -126,12 +126,12 @@ const Shop: React.FC = () => {
         };
       });
 
-      const totalCombinedTotal = (previousOrder?.totalAmount || 0) + cartTotal;
-      const week = settings?.currentPickupDate 
-        ? getWeekLabel(new Date(settings.currentPickupDate)) 
+      const week = settings?.currentPickupDate
+        ? getWeekLabel(new Date(settings.currentPickupDate))
         : getWeekLabel(new Date());
-        
-      const order = await ApiService.submitOrder(user, newItems, totalCombinedTotal, week, isShipping);
+
+      // Nur den neuen Betrag übergeben — submitOrder addiert intern den bestehenden Betrag
+      const order = await ApiService.submitOrder(user, newItems, cartTotal, week, isShipping);
       
       setCart({});
       setIsCheckoutOpen(false);
