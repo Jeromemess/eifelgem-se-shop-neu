@@ -132,7 +132,14 @@ const Shop: React.FC = () => {
 
       // Nur den neuen Betrag übergeben — submitOrder addiert intern den bestehenden Betrag
       const order = await ApiService.submitOrder(user, newItems, cartTotal, week, isShipping);
-      
+
+      // Bestand im lokalen State sofort reduzieren, damit Kunden die aktuelle Verfügbarkeit sehen
+      setProducts(prev => prev.map(p => {
+        const ordered = newItems.find(item => item.productId === p.id);
+        if (!ordered) return p;
+        return { ...p, stockQuantity: Math.max(0, p.stockQuantity - ordered.quantity) };
+      }));
+
       setCart({});
       setIsCheckoutOpen(false);
       navigate('/success', { state: { order, newItems: newItems } });
