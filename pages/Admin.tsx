@@ -66,7 +66,7 @@ const Admin: React.FC = () => {
     try {
       await ApiService.saveSettings(settings);
       alert("Hof-Einstellungen wurden in der Cloud aktualisiert!");
-    } catch (err) { alert("Fehler beim Speichern der Einstellungen"); }
+    } catch (err: any) { alert("Fehler beim Speichern:\n" + (err?.message || err?.details || JSON.stringify(err))); }
     finally { setIsLoading(false); }
   };
 
