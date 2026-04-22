@@ -7,7 +7,14 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 let supabase: SupabaseClient | null = null;
 try {
-  supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+    },
+    realtime: { params: { eventsPerSecond: -1 } },
+  });
 } catch (e) {
   console.error("Supabase Init Fehler:", e);
 }
