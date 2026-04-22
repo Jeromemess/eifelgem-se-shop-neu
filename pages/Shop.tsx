@@ -344,7 +344,11 @@ const Shop: React.FC = () => {
                     {!isShipping && (
                       <div className="p-4 rounded-xl" style={{backgroundColor: 'rgba(112,160,32,0.06)', border: '1px solid rgba(112,160,32,0.15)'}}>
                         <p className="text-[10px] leading-relaxed" style={{color: 'var(--eifel-text)'}}>
-                          Abholung am Feld (Mittwoch ab {settings.pickupTime || '17:00'} Uhr).
+                          Abholung am Feld:{' '}
+                          {settings.currentPickupDate
+                            ? new Date(settings.currentPickupDate).toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: '2-digit' })
+                            : settings.pickupDay || 'Abholtermin'}
+                          {settings.pickupTime ? ` · ${settings.pickupTime} Uhr` : ''}
                         </p>
                       </div>
                     )}
