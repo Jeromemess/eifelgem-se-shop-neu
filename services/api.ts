@@ -33,13 +33,6 @@ async function deductStock(sb: SupabaseClient, items: OrderItem[]) {
 export const ApiService = {
   isLive: () => !!supabase,
   
-  getDebugStatus: () => ({
-    isConfigured: isSupabaseConfigured,
-    urlSet: !!SUPABASE_URL,
-    keySet: !!SUPABASE_ANON_KEY,
-    urlPreview: SUPABASE_URL ? SUPABASE_URL.substring(0, 12) + '...' : 'n/a'
-  }),
-
   async getSettings(): Promise<StoreSettings> {
     const fallback: StoreSettings = { 
       pickupDay: 'Donnerstag', pickupTime: '17:00', openDay: 'Sonntag', maxSlots: 50, 
@@ -65,8 +58,8 @@ export const ApiService = {
 
   async getProducts(): Promise<Product[]> {
     if (!supabase) return JSON.parse(localStorage.getItem('eifel_gemuese_products_mock') || '[]');
-    const { data, error } = await supabase.from('products').select('*').order('sort_order', { ascending: true });
-    if (error) return [];
+    const { data, error } = await supabase.from('products').select('*');
+    if (error) { console.error('getProducts Fehler:', error); return []; }
     return (data || []).map(mapProduct);
   },
 
