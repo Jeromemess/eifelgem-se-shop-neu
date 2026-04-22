@@ -212,7 +212,10 @@ const Shop: React.FC = () => {
         </h2>
         <div className="max-w-xl mx-auto mb-10">
           <p className="text-lg mb-6 italic" style={{color: 'var(--eifel-text-muted)'}}>
-            Nächste Ernte: <span className="not-italic font-semibold" style={{color: 'var(--eifel-dark)'}}>{settings.currentPickupDate ? new Date(settings.currentPickupDate).toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: '2-digit' }) : 'Demnächst'}</span>
+            Nächste Ernte: <span className="not-italic font-semibold" style={{color: 'var(--eifel-dark)'}}>
+              {settings.currentPickupDate ? new Date(settings.currentPickupDate).toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: '2-digit' }) : 'Demnächst'}
+              {settings.pickupTime ? ` · ${settings.pickupTime} Uhr` : ''}
+            </span>
           </p>
           <div className="h-px w-16 mx-auto rounded-full" style={{backgroundColor: 'var(--eifel-green)'}}></div>
         </div>
