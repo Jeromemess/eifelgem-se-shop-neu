@@ -27,10 +27,11 @@ const Shop: React.FC = () => {
     // Gecachte Daten sofort anzeigen → kein Spinner bei Wiederkehrern
     const cachedProds = localStorage.getItem('eifel_products_cache');
     const cachedSetts = localStorage.getItem('eifel_settings_cache');
-    if (cachedProds && cachedSetts) {
-      const prods: Product[] = JSON.parse(cachedProds);
-      const setts: StoreSettings = JSON.parse(cachedSetts);
-      setProducts(prods.filter(p => p.isActive).sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0)));
+    const cachedProdsParsed: Product[] = cachedProds ? JSON.parse(cachedProds) : [];
+    const hasCache = cachedProdsParsed.length > 0 && !!cachedSetts;
+    if (hasCache) {
+      const setts: StoreSettings = JSON.parse(cachedSetts!);
+      setProducts(cachedProdsParsed.filter(p => p.isActive).sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0)));
       setSettings(setts);
       setIsLoading(false);
     } else {
