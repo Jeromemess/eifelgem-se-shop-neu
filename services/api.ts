@@ -2,27 +2,14 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { Product, Order, StoreSettings, Customer, OrderItem } from '../types';
 
-const getEnvVar = (key: string): string => {
-  return (import.meta as any).env?.[key] ||
-          (window as any)?._env_?.[key] ||
-          '';
-};
-
-const SUPABASE_URL = getEnvVar('VITE_SUPABASE_URL');
-const SUPABASE_ANON_KEY = getEnvVar('VITE_SUPABASE_ANON_KEY');
-
-const isSupabaseConfigured = 
-  SUPABASE_URL && 
-  SUPABASE_URL.startsWith('http') && 
-  !SUPABASE_URL.includes('DEINE_SUPABASE_URL_HIER');
+const SUPABASE_URL = 'https://rxlfmxwywnecvsxsidol.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ4bGZteHd5d25lY3ZzeHNpZG9sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAwNDQyODgsImV4cCI6MjA4NTYyMDI4OH0.F9VKlEpgxYinixy1JVjSlHS9x5bXSLE5ZPixr_RCYEk';
 
 let supabase: SupabaseClient | null = null;
-if (isSupabaseConfigured) {
-  try {
-    supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-  } catch (e) {
-    console.error("Supabase Init Fehler:", e);
-  }
+try {
+  supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+} catch (e) {
+  console.error("Supabase Init Fehler:", e);
 }
 
 export const getWeekLabel = (date: Date): string => {
