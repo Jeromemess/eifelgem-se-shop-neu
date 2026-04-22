@@ -15,6 +15,9 @@ try {
     },
     realtime: { params: { eventsPerSecond: -1 } },
   });
+  // Verbindung sofort vorwärmen — TCP+TLS Handshake passiert jetzt,
+  // nicht erst wenn der Nutzer wartet
+  supabase.from('settings').select('id').limit(1).then(() => {});
 } catch (e) {
   console.error("Supabase Init Fehler:", e);
 }
