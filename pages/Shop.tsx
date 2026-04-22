@@ -24,29 +24,49 @@ const Shop: React.FC = () => {
   const [lastName, setLastName] = useState('');
 
   const loadInitialData = async () => {
-    setIsLoading(true);
+    // Gecachte Daten sofort anzeigen → kein Spinner bei Wiederkehrern
+    const cachedProds = localStorage.getItem('eifel_products_cache');
+    const cachedSetts = localStorage.getItem('eifel_settings_cache');
+    if (cachedProds && cachedSetts) {
+      const prods: Product[] = JSON.parse(cachedProds);
+      const setts: StoreSettings = JSON.parse(cachedSetts);
+      setProducts(prods.filter(p => p.isActive).sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0)));
+      setSettings(setts);
+      setIsLoading(false);
+    } else {
+      setIsLoading(true);
+    }
+
     try {
-      const [user, prodData, storeSettings] = await Promise.all([
-        ApiService.getCurrentUser(),
-        ApiService.getProducts(),
-        ApiService.getSettings()
-      ]);
-      
+      const user = await ApiService.getCurrentUser();
       setCurrentUser(user);
+
+      // Wochenlabel aus Cache für parallelen Order-Fetch
+      const cachedSettsParsed: StoreSettings | null = cachedSetts ? JSON.parse(cachedSetts) : null;
+      const weekForFetch = cachedSettsParsed?.currentPickupDate
+        ? getWeekLabel(new Date(cachedSettsParsed.currentPickupDate))
+        : getWeekLabel(new Date());
+
+      // Alle 3 Quellen gleichzeitig laden
+      const [prodData, storeSettings, prevOrder] = await Promise.all([
+        ApiService.getProducts(),
+        ApiService.getSettings(),
+        user
+          ? ApiService.getOrdersForUser(`${user.firstName} ${user.lastName}`, weekForFetch)
+          : Promise.resolve(null)
+      ]);
+
       const sortedProducts = [...prodData]
         .filter(p => p.isActive)
         .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
-      
+
       setProducts(sortedProducts);
       setSettings(storeSettings);
+      setPreviousOrder(prevOrder);
 
-      if (user) {
-        const week = storeSettings.currentPickupDate 
-          ? getWeekLabel(new Date(storeSettings.currentPickupDate)) 
-          : getWeekLabel(new Date());
-        const prev = await ApiService.getOrdersForUser(`${user.firstName} ${user.lastName}`, week);
-        setPreviousOrder(prev);
-      }
+      // Cache für nächsten Besuch aktualisieren
+      localStorage.setItem('eifel_products_cache', JSON.stringify(prodData));
+      localStorage.setItem('eifel_settings_cache', JSON.stringify(storeSettings));
     } catch (err: any) {
       console.error("Fehler beim Laden im Shop:", err);
     } finally {
