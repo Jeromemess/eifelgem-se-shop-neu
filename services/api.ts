@@ -249,12 +249,19 @@ export const ApiService = {
 
   async saveSettings(s: StoreSettings) {
     if (supabase) {
-      const { error } = await supabase.from('settings').upsert({ 
-        id: 1, pickup_day: s.pickupDay, pickup_time: s.pickupTime, open_day: s.openDay, 
+      const payload = {
+        id: 1, pickup_day: s.pickupDay, pickup_time: s.pickupTime, open_day: s.openDay,
         max_slots: s.maxSlots, current_pickup_date: s.currentPickupDate,
         is_shop_open: s.isShopOpen, next_opening_text: s.nextOpeningText
-      });
-      if (error) throw error;
+      };
+      // Try update first; if no row exists yet, insert
+      const { data: updated, error: updateErr } = await supabase
+        .from('settings').update(payload).eq('id', 1).select();
+      if (updateErr) throw updateErr;
+      if (!updated || updated.length === 0) {
+        const { error: insertErr } = await supabase.from('settings').insert(payload);
+        if (insertErr) throw insertErr;
+      }
     }
   },
 
