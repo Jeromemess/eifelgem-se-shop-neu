@@ -270,6 +270,24 @@ export const ApiService = {
     if (supabase) await supabase.from('products').delete().eq('id', id);
   },
 
+  async deleteOrder(orderId: string) {
+    if (supabase) await supabase.from('orders').delete().eq('id', orderId);
+  },
+
+  async deleteItemFromOrder(orderId: string, itemIdx: number) {
+    if (!supabase) return;
+    const { data: order } = await supabase.from('orders').select('items, total_amount').eq('id', orderId).single();
+    if (!order) return;
+    const items = [...order.items];
+    const removed = items.splice(itemIdx, 1)[0];
+    const newTotal = Math.max(0, Number(order.total_amount) - (removed.priceAtOrder * removed.quantity));
+    if (items.length === 0) {
+      await supabase.from('orders').delete().eq('id', orderId);
+    } else {
+      await supabase.from('orders').update({ items, total_amount: newTotal }).eq('id', orderId);
+    }
+  },
+
   async getCurrentUser(): Promise<Customer | null> {
     const s = localStorage.getItem('eifel_gemuese_auth');
     return s ? JSON.parse(s) : null;

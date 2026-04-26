@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
 import { ApiService, getWeekLabel } from '../services/api';
 import { Product, Customer, OrderItem, Order, StoreSettings } from '../types';
-import { Loader2, X, ArrowRight, ShoppingCart, History, ShoppingBag, Banknote, UserPlus, Sprout, Tractor, Clock, MapPin, RefreshCcw } from 'lucide-react';
+import { Loader2, X, ArrowRight, ShoppingCart, History, ShoppingBag, Banknote, UserPlus, Sprout, Tractor, Clock, MapPin, RefreshCcw, Trash2 } from 'lucide-react';
 
 const Shop: React.FC = () => {
   const navigate = useNavigate();
@@ -22,6 +22,8 @@ const Shop: React.FC = () => {
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
+  const [isOrderViewOpen, setIsOrderViewOpen] = useState(false);
+  const [isDeletingOrder, setIsDeletingOrder] = useState(false);
 
   const loadInitialData = async () => {
     const cachedProds = localStorage.getItem('eifel_products_cache');
@@ -93,6 +95,35 @@ const Shop: React.FC = () => {
   useEffect(() => {
     loadInitialData();
   }, []);
+
+  const handleDeleteItem = async (itemIdx: number) => {
+    if (!previousOrder) return;
+    setIsDeletingOrder(true);
+    try {
+      await ApiService.deleteItemFromOrder(previousOrder.id, itemIdx);
+      const newItems = previousOrder.items.filter((_, i) => i !== itemIdx);
+      if (newItems.length === 0) {
+        setPreviousOrder(null);
+        setIsOrderViewOpen(false);
+      } else {
+        const removed = previousOrder.items[itemIdx];
+        const newTotal = Math.max(0, previousOrder.totalAmount - (removed.priceAtOrder * removed.quantity));
+        setPreviousOrder({ ...previousOrder, items: newItems, totalAmount: newTotal });
+      }
+    } catch (err) { console.error(err); }
+    finally { setIsDeletingOrder(false); }
+  };
+
+  const handleDeleteWholeOrder = async () => {
+    if (!previousOrder || !confirm('Möchtest du deine gesamte Bestellung wirklich löschen?')) return;
+    setIsDeletingOrder(true);
+    try {
+      await ApiService.deleteOrder(previousOrder.id);
+      setPreviousOrder(null);
+      setIsOrderViewOpen(false);
+    } catch (err) { console.error(err); }
+    finally { setIsDeletingOrder(false); }
+  };
 
   const calculateTotalToPay = (product: Product, quantity: number): number => {
     let price = product.pricePerUnit;
@@ -235,6 +266,18 @@ const Shop: React.FC = () => {
           </p>
           <div className="h-px w-16 mx-auto rounded-full" style={{backgroundColor: 'var(--eifel-green)'}}></div>
         </div>
+
+        {/* Meine Bestellung Button — nur sichtbar wenn Bestellung vorhanden */}
+        {previousOrder && currentUser && (
+          <button
+            onClick={() => setIsOrderViewOpen(true)}
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl font-semibold text-[11px] uppercase tracking-widest transition-all hover:scale-105 active:scale-95 shadow-md"
+            style={{backgroundColor: 'var(--eifel-dark)', color: 'white'}}
+          >
+            <ShoppingBag className="w-4 h-4" />
+            Meine Bestellung · {previousOrder.totalAmount.toFixed(2)} €
+          </button>
+        )}
       </div>
 
       {products.length === 0 ? (
@@ -403,6 +446,63 @@ const Shop: React.FC = () => {
                 {isSubmitting ? <Loader2 className="w-6 h-6 animate-spin" /> : <><Tractor className="w-5 h-5" /> Verbindlich reservieren</>}
               </button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Meine Bestellung */}
+      {isOrderViewOpen && previousOrder && (
+        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center sm:p-4">
+          <div className="absolute inset-0 backdrop-blur-md" style={{backgroundColor: 'rgba(0,56,48,0.85)'}} onClick={() => setIsOrderViewOpen(false)} />
+          <div className="relative bg-white w-full sm:max-w-xl sm:rounded-[3rem] rounded-t-[2.5rem] overflow-hidden shadow-2xl p-6 sm:p-10 max-h-[92dvh] overflow-y-auto no-scrollbar">
+            {isDeletingOrder && <div className="absolute inset-0 bg-white/70 flex items-center justify-center z-10 rounded-[3rem]"><Loader2 className="w-8 h-8 animate-spin" style={{color: 'var(--eifel-dark)'}} /></div>}
+
+            <div className="flex justify-between items-start mb-8">
+              <div>
+                <h3 className="font-display text-2xl font-semibold" style={{color: 'var(--eifel-dark)'}}>Deine Bestellung</h3>
+                <p className="text-[10px] font-semibold uppercase tracking-widest mt-1" style={{color: 'var(--eifel-text-muted)'}}>
+                  {currentUser?.firstName} {currentUser?.lastName}
+                </p>
+              </div>
+              <button onClick={() => setIsOrderViewOpen(false)} className="p-2 hover:bg-gray-100 rounded-full"><X className="w-7 h-7 text-gray-400" /></button>
+            </div>
+
+            <div className="space-y-3 mb-6">
+              {previousOrder.items.map((item, idx) => (
+                <div key={idx} className="flex items-center justify-between p-4 rounded-2xl" style={{backgroundColor: 'var(--eifel-beige)', border: '1px solid var(--eifel-beige-dark)'}}>
+                  <div>
+                    <p className="font-bold text-base" style={{color: 'var(--eifel-dark)'}}>{item.quantity}× {item.productName}</p>
+                    <p className="text-[11px] font-medium" style={{color: 'var(--eifel-text-muted)'}}>
+                      {(item.priceAtOrder * item.quantity).toFixed(2)} €
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => handleDeleteItem(idx)}
+                    className="w-9 h-9 flex items-center justify-center rounded-xl bg-red-50 text-red-400 hover:bg-red-500 hover:text-white transition-all"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex items-center justify-between p-5 rounded-2xl mb-6" style={{backgroundColor: 'rgba(0,80,64,0.06)', border: '1px solid rgba(0,80,64,0.12)'}}>
+              <span className="font-semibold text-[11px] uppercase tracking-widest" style={{color: 'var(--eifel-text-muted)'}}>Gesamt zu bezahlen</span>
+              <span className="font-display text-3xl font-semibold" style={{color: 'var(--eifel-dark)'}}>{previousOrder.totalAmount.toFixed(2)} €</span>
+            </div>
+
+            <div className="flex items-center gap-2 p-3 rounded-xl mb-6" style={{color: 'var(--eifel-dark)', backgroundColor: 'rgba(0,80,64,0.05)', border: '1px solid rgba(0,80,64,0.1)'}}>
+              <Banknote className="w-4 h-4 shrink-0" />
+              <p className="text-[9px] font-semibold uppercase tracking-widest">Bezahlung in bar direkt am Feld</p>
+            </div>
+
+            <button
+              onClick={handleDeleteWholeOrder}
+              className="w-full py-4 rounded-2xl font-semibold text-[11px] uppercase tracking-widest flex items-center justify-center gap-2 text-red-500 hover:bg-red-500 hover:text-white transition-all"
+              style={{border: '2px solid rgba(239,68,68,0.3)'}}
+            >
+              <Trash2 className="w-4 h-4" /> Gesamte Bestellung löschen
+            </button>
           </div>
         </div>
       )}
