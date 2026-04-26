@@ -68,7 +68,7 @@ export const ApiService = {
 
   async getProducts(): Promise<Product[]> {
     if (!supabase) return JSON.parse(localStorage.getItem('eifel_gemuese_products_mock') || '[]');
-    const { data, error } = await supabase.from('products').select('*');
+    const { data, error } = await supabase.from('products').select('id,name,price_per_unit,unit,image_url,stock_quantity,is_active,description,discount,is_bogo,sort_order');
     if (error) { console.error('getProducts Fehler:', error); return []; }
     return (data || []).map(mapProduct);
   },
