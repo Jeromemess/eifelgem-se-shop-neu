@@ -26,6 +26,8 @@ const Admin: React.FC = () => {
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
   const [harvestChecklist, setHarvestChecklist] = useState<Record<string, boolean>>({});
   const [ordersDisplayCount, setOrdersDisplayCount] = useState(50);
+  const [stockEditId, setStockEditId] = useState<string | null>(null);
+  const [stockEditValue, setStockEditValue] = useState<number>(0);
 
   const isLive = ApiService.isLive();
 
@@ -134,6 +136,17 @@ const Admin: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const saveStock = async (product: Product, newQty: number) => {
+    setStockEditId(null);
+    if (newQty === product.stockQuantity) return;
+    setIsLoading(true);
+    try {
+      await ApiService.saveProduct({ ...product, stockQuantity: newQty });
+      setProducts(prev => prev.map(p => p.id === product.id ? { ...p, stockQuantity: newQty } : p));
+    } catch (e) { console.error(e); }
+    finally { setIsLoading(false); }
   };
 
   // ERNTEPLAN BERECHNEN
@@ -303,12 +316,12 @@ const Admin: React.FC = () => {
               </div>
               <div className="grid grid-cols-1 gap-4">
                 {products.map((p, idx) => (
-                  <div key={p.id} className={`border-2 rounded-[1.5rem] bg-[#F0F0E0] border-[#E2E2CE] p-4 sm:p-5 flex gap-3 sm:gap-5 items-center transition-all ${!p.isActive ? 'opacity-50 grayscale bg-gray-50 border-dashed' : ''}`}>
+                  <div key={p.id} className={`border-2 rounded-[1.5rem] bg-[#F0F0E0] border-[#E2E2CE] p-4 sm:p-5 flex gap-3 sm:gap-4 items-center transition-all ${!p.isActive ? 'opacity-50 grayscale bg-gray-50 border-dashed' : ''}`}>
                     <div className="flex flex-col gap-1">
-                       <button onClick={() => moveProduct(idx, 'up')} disabled={idx === 0} className="w-10 h-10 flex items-center justify-center rounded-lg hover:text-[#005040] disabled:opacity-20"><ArrowUp className="w-5 h-5" /></button>
-                       <button onClick={() => moveProduct(idx, 'down')} disabled={idx === products.length - 1} className="w-10 h-10 flex items-center justify-center rounded-lg hover:text-[#005040] disabled:opacity-20"><ArrowDown className="w-5 h-5" /></button>
+                       <button onClick={() => moveProduct(idx, 'up')} disabled={idx === 0} className="w-8 h-8 flex items-center justify-center rounded-lg hover:text-[#005040] disabled:opacity-20"><ArrowUp className="w-4 h-4" /></button>
+                       <button onClick={() => moveProduct(idx, 'down')} disabled={idx === products.length - 1} className="w-8 h-8 flex items-center justify-center rounded-lg hover:text-[#005040] disabled:opacity-20"><ArrowDown className="w-4 h-4" /></button>
                     </div>
-                    <img src={p.imageUrl || 'https://images.unsplash.com/photo-1566385908041-9c9ca335606d?w=200'} className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl object-cover shadow-sm shrink-0" />
+                    <img src={p.imageUrl || 'https://images.unsplash.com/photo-1566385908041-9c9ca335606d?w=200'} className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl object-cover shadow-sm shrink-0" />
                     <div className="flex-1 min-w-0">
                       <h4 className="font-black text-sm uppercase truncate text-black flex items-center gap-2">
                         {p.name}
@@ -316,13 +329,47 @@ const Admin: React.FC = () => {
                         {p.discount ? <span className="text-[9px] bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded shrink-0">-{p.discount}%</span> : null}
                       </h4>
                       <p className="text-[10px] font-black text-[#005040]">{p.pricePerUnit.toFixed(2)}€ / {p.unit}</p>
+
+                      {/* Inline-Bestand */}
+                      {stockEditId === p.id ? (
+                        <div className="flex items-center gap-1.5 mt-2">
+                          <button type="button" onClick={() => setStockEditValue(v => Math.max(0, v - 1))} className="w-7 h-7 rounded-lg bg-white border font-black text-lg flex items-center justify-center hover:bg-gray-100">−</button>
+                          <input
+                            type="number"
+                            min={0}
+                            value={stockEditValue}
+                            onChange={e => setStockEditValue(Math.max(0, Number(e.target.value)))}
+                            onKeyDown={e => { if (e.key === 'Enter') saveStock(p, stockEditValue); if (e.key === 'Escape') setStockEditId(null); }}
+                            autoFocus
+                            className="w-16 text-center p-1 rounded-lg border-2 border-[#005040] font-black text-sm outline-none"
+                          />
+                          <button type="button" onClick={() => setStockEditValue(v => v + 1)} className="w-7 h-7 rounded-lg bg-white border font-black text-lg flex items-center justify-center hover:bg-gray-100">+</button>
+                          <button type="button" onClick={() => saveStock(p, stockEditValue)} className="px-3 h-7 rounded-lg bg-[#005040] text-white text-[9px] font-black uppercase tracking-wider">OK</button>
+                          <button type="button" onClick={() => setStockEditId(null)} className="w-7 h-7 rounded-lg bg-gray-100 text-gray-400 flex items-center justify-center"><X className="w-3 h-3" /></button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => { setStockEditId(p.id); setStockEditValue(p.stockQuantity ?? 0); }}
+                          className={`mt-1.5 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all hover:scale-105 ${
+                            (p.stockQuantity ?? 0) === 0
+                              ? 'bg-red-100 text-red-600'
+                              : (p.stockQuantity ?? 0) <= 5
+                              ? 'bg-orange-100 text-orange-600'
+                              : 'bg-green-100 text-green-700'
+                          }`}
+                        >
+                          <span className="text-base leading-none">{p.stockQuantity ?? 0}</span>
+                          <span className="opacity-70">Stk · bearbeiten</span>
+                        </button>
+                      )}
                     </div>
                     <div className="flex gap-1.5 shrink-0">
-                      <button onClick={() => toggleVisibility(p)} title={p.isActive ? "Im Shop ausblenden" : "Im Shop anzeigen"} className={`w-10 h-10 flex items-center justify-center rounded-xl border transition-all ${p.isActive ? 'bg-white text-gray-400' : 'bg-orange-500 text-white border-transparent'}`}>
+                      <button onClick={() => toggleVisibility(p)} title={p.isActive ? "Im Shop ausblenden" : "Im Shop anzeigen"} className={`w-9 h-9 flex items-center justify-center rounded-xl border transition-all ${p.isActive ? 'bg-white text-gray-400' : 'bg-orange-500 text-white border-transparent'}`}>
                         {p.isActive ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
                       </button>
-                      <button onClick={() => { setCurrentProduct(p); setIsEditing(true); }} className="w-10 h-10 flex items-center justify-center bg-white border rounded-xl hover:bg-black hover:text-white transition-colors"><Edit2 className="w-4 h-4" /></button>
-                      <button onClick={() => { if(confirm("Sorten wirklich vom Hof löschen?")) ApiService.deleteProduct(p.id).then(loadData) }} className="w-10 h-10 flex items-center justify-center bg-red-50 text-red-500 border rounded-xl hover:bg-red-500 hover:text-white transition-colors"><Trash2 className="w-4 h-4" /></button>
+                      <button onClick={() => { setCurrentProduct(p); setIsEditing(true); }} className="w-9 h-9 flex items-center justify-center bg-white border rounded-xl hover:bg-black hover:text-white transition-colors"><Edit2 className="w-4 h-4" /></button>
+                      <button onClick={() => { if(confirm("Sorten wirklich vom Hof löschen?")) ApiService.deleteProduct(p.id).then(loadData) }} className="w-9 h-9 flex items-center justify-center bg-red-50 text-red-500 border rounded-xl hover:bg-red-500 hover:text-white transition-colors"><Trash2 className="w-4 h-4" /></button>
                     </div>
                   </div>
                 ))}
