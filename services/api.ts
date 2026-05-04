@@ -266,6 +266,19 @@ export const ApiService = {
     }
   },
 
+  async uploadProductImage(file: File): Promise<string> {
+    if (!supabase) throw new Error('Keine Verbindung');
+    const compressed = await compressImage(file, 800, 0.82);
+    const ext = file.type === 'image/png' ? 'png' : 'jpg';
+    const fileName = `product_${Date.now()}.${ext}`;
+    const { error } = await supabase.storage
+      .from('products')
+      .upload(fileName, compressed, { contentType: 'image/jpeg', upsert: false });
+    if (error) throw error;
+    const { data: { publicUrl } } = supabase.storage.from('products').getPublicUrl(fileName);
+    return publicUrl;
+  },
+
   async deleteProduct(id: string) {
     if (supabase) await supabase.from('products').delete().eq('id', id);
   },
@@ -312,6 +325,27 @@ export const ApiService = {
     return found || null;
   }
 };
+
+function compressImage(file: File, maxPx: number, quality: number): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let { width, height } = img;
+      if (width > maxPx || height > maxPx) {
+        if (width >= height) { height = Math.round(height * maxPx / width); width = maxPx; }
+        else { width = Math.round(width * maxPx / height); height = maxPx; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = width; canvas.height = height;
+      canvas.getContext('2d')!.drawImage(img, 0, 0, width, height);
+      canvas.toBlob(b => b ? resolve(b) : reject(new Error('Komprimierung fehlgeschlagen')), 'image/jpeg', quality);
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
 
 const mapProduct = (p: any): Product => ({
   id: p.id,

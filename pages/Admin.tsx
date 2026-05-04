@@ -87,15 +87,18 @@ const Admin: React.FC = () => {
     }
   };
 
-  // BILD UPLOAD HANDLER
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // BILD UPLOAD HANDLER — komprimiert & lädt direkt in Supabase Storage hoch
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setCurrentProduct({ ...currentProduct, imageUrl: reader.result as string });
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+    setIsLoading(true);
+    try {
+      const url = await ApiService.uploadProductImage(file);
+      setCurrentProduct(prev => ({ ...prev, imageUrl: url }));
+    } catch (err: any) {
+      alert('Bild-Upload fehlgeschlagen: ' + (err?.message || err));
+    } finally {
+      setIsLoading(false);
     }
   };
 
